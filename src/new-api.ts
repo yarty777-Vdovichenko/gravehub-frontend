@@ -6,6 +6,7 @@ export interface MetaPage<T> {
 export interface Employee {
   id: string;
   rating: number;
+  reviewsCount?:number;
   completedContracts: number;
   user: { id: string; name: string };
   regions: { id: string; name: string }[];
@@ -67,32 +68,6 @@ export interface SearchFilters {
   page: number;
   limit: number;
 }
-export const newApi = {
-  employees: (params: SearchFilters, signal?: AbortSignal) =>
-    api
-      .get<MetaPage<Employee>>("/employees", { params, signal })
-      .then((r) => r.data),
-  employee: (id: string) =>
-    api.get<Employee>("/employees/" + id).then((r) => r.data),
-  cemeteries: () => api.get<Cemetery[]>("/cemeteries").then((r) => r.data),
-  plots: (id: string) =>
-    api.get<BurialPlot[]>(`/cemeteries/${id}/plots`).then((r) => r.data),
-  mine: () => api.get<OwnedPlot[]>("/plots/my").then((r) => r.data),
-  reserve: (id: string) =>
-    api.post<Reservation>(`/plots/${id}/reserve`).then((r) => r.data),
-  release: (id: string) => api.delete(`/plots/${id}/reserve`),
-  credit: (id: string, months: 6 | 12 | 24, downPayment: number) =>
-    api
-      .get<Credit>(`/plots/${id}/credit-preview`, {
-        params: { months, downPayment },
-      })
-      .then((r) => r.data),
-  purchase: (
-    id: string,
-    body: {
-      paymentType: "full" | "credit";
-      months?: 6 | 12 | 24;
-      downPayment?: number;
-    },
-  ) => api.post<Purchase>(`/plots/${id}/purchase`, body).then((r) => r.data),
-};
+const profiles=new Map<string,Employee>();
+function normalize(raw:unknown):Employee{if(!raw||typeof raw!=='object'||!('id'in raw)||typeof raw.id!=='string')throw new Error('Некоректні дані виконавця');const r=raw as Record<string,unknown>;const list=(value:unknown):{id:string;name:string}[]=>Array.isArray(value)?value.filter((v):v is {id:string;name:string}=>!!v&&typeof v==='object'&&typeof v.id==='string'&&typeof v.name==='string'):[];const u=r.user as Record<string,unknown>|undefined;return {id:raw.id,rating:typeof r.rating==='number'?r.rating:0,reviewsCount:typeof r.reviewsCount==='number'?r.reviewsCount:undefined,completedContracts:typeof r.completedContracts==='number'?r.completedContracts:0,user:{id:typeof u?.id==='string'?u.id:'',name:typeof u?.name==='string'?u.name:'Виконавець'},regions:list(r.regions),specialization:list(r.specialization??r.specializations??r.services)}}
+export const newApi={employees:async(params:SearchFilters,signal?:AbortSignal)=>{const {data}=await api.get<MetaPage<unknown>>('/employees',{params,signal});const items=data.items.map(normalize);items.forEach(x=>profiles.set(x.id,x));return {...data,items}},employee:async(id:string)=>{const p=profiles.get(id);if(!p)throw new Error('Профіль недоступний після перезавантаження. Відкрийте його зі списку виконавців. Окремий endpoint профілю не використовується.');return p}};

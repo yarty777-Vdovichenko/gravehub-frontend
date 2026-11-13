@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios,{ AxiosError,InternalAxiosRequestConfig } from "axios";
 export type Mode = "customer" | "employee";
 export interface Profile {
   id: string;
@@ -6,6 +6,7 @@ export interface Profile {
   name?: string;
   rating?: number;
   reviewsCount?: number;
+  completedContracts?: number;
   user?: { name: string };
 }
 export interface User {
@@ -14,6 +15,7 @@ export interface User {
   name: string;
   roles: Mode[];
   mode: Mode;
+  rolesComplete?: boolean;
   employeeProfile?: Profile;
 }
 export interface AuthResponse {
@@ -110,6 +112,11 @@ const auth = axios.create({
   withCredentials: true,
 });
 let token: string | null = null;
+let remembered: Session | null = null;
+const unavailableRoles=new Set<Mode>();
+export const canRequestRole=(role:Mode)=>!!remembered && !remembered.user.roles.includes(role) && (remembered.user.rolesComplete===true || unavailableRoles.has(role));
+export function rememberIdentity(name:string,email:string){if(remembered){remembered={...remembered,user:{...remembered.user,name,email}};applySession(remembered)}}
+
 let refreshPromise: Promise<Session> | null = null;
 let sessionListener: (s: Session | null) => void = () => {};
 export const listenSession = (fn: typeof sessionListener) => {
@@ -120,6 +127,8 @@ export const listenSession = (fn: typeof sessionListener) => {
 };
 export function applySession(s: Session | null) {
   token = s?.accessToken ?? null;
+  remembered = s;
+  if(!s)unavailableRoles.clear();
   sessionListener(s);
 }
 export async function hydrateSession(response: AuthResponse): Promise<Session> {
@@ -142,10 +151,11 @@ export async function hydrateSession(response: AuthResponse): Promise<Session> {
     accessToken: response.accessToken,
     user: {
       id: payload.sub,
-      email: "",
-      name: "Користувач",
+      email: remembered?.user.id===payload.sub ? remembered.user.email : "",
+      name: remembered?.user.id===payload.sub ? remembered.user.name : "Користувач",
       mode: payload.role,
-      roles: [payload.role],
+      roles: Array.from(new Set<Mode>([...(remembered?.user.id===payload.sub?remembered.user.roles:[]),payload.role])),
+      rolesComplete: remembered?.user.id===payload.sub ? remembered.user.rolesComplete : false,
     },
     mode: payload.role,
   };
@@ -189,11 +199,16 @@ api.interceptors.response.use(
         r.config.url ?? "",
       )
     ) {
-      r.data = await hydrateSession(r.data as AuthResponse);
+      const next=await hydrateSession(r.data as AuthResponse);
+      if(r.config.url==='/auth/register'){const input=JSON.parse(String(r.config.data)) as RegisterInput;next.user.name=input.name;next.user.email=input.email;next.user.roles=[input.role];next.user.rolesComplete=true;}
+      if(r.config.url?.startsWith('/auth/roles/')){const role=r.config.url.endsWith('/employee')?'employee':'customer';next.user.roles=Array.from(new Set([...next.user.roles,role]));}
+      r.data=next;
     }
     return r;
   },
   async (e: AxiosError) => {
+    if(e.response?.status===403 && e.config?.url==='/auth/switch-mode'){try{const input=JSON.parse(String(e.config.data)) as {mode:Mode};unavailableRoles.add(input.mode);sessionListener(remembered)}catch{/* No untrusted body propagation */}}
+
     const c = e.config as
       (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
     if (e.response?.status !== 401 || !c || c._retried || publicPath(c.url))
@@ -212,6 +227,7 @@ export function errorText(e: unknown) {
   if (axios.isAxiosError<ApiError>(e)) {
     const status = e.response?.status;
     if (status === 403) return "Ця дія недоступна у вашому поточному режимі.";
+    if(status===401 && e.config?.url==="/auth/login") return "Невірний email/пароль";
     if (status === 401) return "Сесію завершено. Увійдіть знову.";
     const m = e.response?.data?.message;
     if (status === 404 && typeof m === 'string' && /^Cannot (GET|POST|DELETE) \/(cemeteries|plots)/.test(m))
