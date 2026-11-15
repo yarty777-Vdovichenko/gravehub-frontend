@@ -31,7 +31,7 @@ import { useList } from './useList';
 export function Dashboard() {
   const a = useApp(),
     list = useList(
-      a.mode === "customer" ? "/contracts/my" : "/employee/my-contracts",
+      a.mode === "customer" ? "/contracts/my" : "/employee/my-contracts/my",
     ),
     [filter, setFilter] = useState("all");
   const active = list.items.filter((c) =>

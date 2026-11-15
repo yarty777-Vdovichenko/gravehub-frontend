@@ -131,6 +131,57 @@ export function applySession(s: Session | null) {
   if(!s)unavailableRoles.clear();
   sessionListener(s);
 }
+interface MeResponse {
+  id: string;
+  email: string;
+  name: string;
+  roles: Mode[];
+  activeMode?: Mode;
+}
+const isMode = (v: unknown): v is Mode => v === "customer" || v === "employee";
+function readMe(raw: unknown): MeResponse | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (
+    typeof r.id !== "string" ||
+    typeof r.email !== "string" ||
+    typeof r.name !== "string" ||
+    !Array.isArray(r.roles)
+  )
+    return null;
+  const roles = r.roles.filter(isMode);
+  if (!roles.length) return null;
+  return {
+    id: r.id,
+    email: r.email,
+    name: r.name,
+    roles,
+    activeMode: isMode(r.activeMode) ? r.activeMode : undefined,
+  };
+}
+// Повні дані профілю (ім'я, email, усі ролі) бекенд віддає через GET /auth/me.
+// Якщо endpoint недоступний — тихо працюємо зі старою поведінкою (лише роль з токена).
+async function enrichSession(s: Session): Promise<Session> {
+  try {
+    const r = await auth.get<unknown>("/auth/me", {
+      headers: { Authorization: `Bearer ${s.accessToken}` },
+    });
+    const me = readMe(r.data);
+    if (!me || me.id !== s.user.id) return s;
+    return {
+      ...s,
+      user: {
+        ...s.user,
+        name: me.name,
+        email: me.email,
+        roles: me.roles,
+        rolesComplete: true,
+      },
+    };
+  } catch {
+    return s;
+  }
+}
 export async function hydrateSession(response: AuthResponse): Promise<Session> {
   const part = response.accessToken.split(".")[1];
   if (!part) throw new Error("Некоректний access token");
@@ -147,18 +198,22 @@ export async function hydrateSession(response: AuthResponse): Promise<Session> {
   )
     throw new Error("Некоректна сесія");
   // Claims guide the UI only; server guards enforce all access.
-  return {
+  const known = remembered?.user.id === payload.sub ? remembered : null;
+  const base: Session = {
     accessToken: response.accessToken,
     user: {
       id: payload.sub,
-      email: remembered?.user.id===payload.sub ? remembered.user.email : "",
-      name: remembered?.user.id===payload.sub ? remembered.user.name : "Користувач",
+      email: known ? known.user.email : "",
+      name: known ? known.user.name : "Користувач",
       mode: payload.role,
-      roles: Array.from(new Set<Mode>([...(remembered?.user.id===payload.sub?remembered.user.roles:[]),payload.role])),
-      rolesComplete: remembered?.user.id===payload.sub ? remembered.user.rolesComplete : false,
+      roles: Array.from(
+        new Set<Mode>([...(known ? known.user.roles : []), payload.role]),
+      ),
+      rolesComplete: known ? known.user.rolesComplete : false,
     },
     mode: payload.role,
   };
+  return enrichSession(base);
 }
 export function refresh() {
   if (!refreshPromise)
@@ -185,7 +240,7 @@ export function refresh() {
 function publicPath(url = "") {
   return (
     /^\/(services|regions)(\?|$)/.test(url) ||
-    /^\/auth\/(login|register|refresh)$/.test(url)
+    /^\/auth\/(login|register|refresh|verify-email|resend-verification|forgot-password|reset-password)$/.test(url)
   );
 }
 api.interceptors.request.use((c) => {
@@ -195,12 +250,11 @@ api.interceptors.request.use((c) => {
 api.interceptors.response.use(
   async (r) => {
     if (
-      /^\/auth\/(login|register|switch-mode|roles\/(customer|employee))$/.test(
+      /^\/auth\/(login|switch-mode|roles\/(customer|employee))$/.test(
         r.config.url ?? "",
       )
     ) {
       const next=await hydrateSession(r.data as AuthResponse);
-      if(r.config.url==='/auth/register'){const input=JSON.parse(String(r.config.data)) as RegisterInput;next.user.name=input.name;next.user.email=input.email;next.user.roles=[input.role];next.user.rolesComplete=true;}
       if(r.config.url?.startsWith('/auth/roles/')){const role=r.config.url.endsWith('/employee')?'employee':'customer';next.user.roles=Array.from(new Set([...next.user.roles,role]));}
       r.data=next;
     }
@@ -226,7 +280,13 @@ api.interceptors.response.use(
 export function errorText(e: unknown) {
   if (axios.isAxiosError<ApiError>(e)) {
     const status = e.response?.status;
-    if (status === 403) return "Ця дія недоступна у вашому поточному режимі.";
+    if (status === 403) {
+      const forbidden = e.response?.data?.message;
+      // Бекенд вимагає підтвердженої пошти — показуємо його пояснення як є.
+      if (typeof forbidden === "string" && /пошт/i.test(forbidden))
+        return forbidden;
+      return "Ця дія недоступна у вашому поточному режимі.";
+    }
     if(status===401 && e.config?.url==="/auth/login") return "Невірний email/пароль";
     if (status === 401) return "Сесію завершено. Увійдіть знову.";
     const m = e.response?.data?.message;
@@ -268,3 +328,16 @@ export async function pageGet<T>(
     ? { items: data, total: data.length, page, limit: 10 }
     : data;
 }
+export const authApi = {
+  verifyEmail: (token: string) =>
+    api.post<{ message: string }>("/auth/verify-email", { token }),
+  resendVerification: (email: string) =>
+    api.post<{ message: string }>("/auth/resend-verification", { email }),
+  forgotPassword: (email: string) =>
+    api.post<{ message: string }>("/auth/forgot-password", { email }),
+  resetPassword: (token: string, newPassword: string) =>
+    api.post<{ message: string }>("/auth/reset-password", {
+      token,
+      newPassword,
+    }),
+};
