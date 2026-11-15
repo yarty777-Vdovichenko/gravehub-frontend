@@ -3,8 +3,13 @@ Check,
 LogOut
 } from "lucide-react";
 import {
+useEffect,
+useRef,
 useState
 } from "react";
+import {
+useLocation
+} from "react-router-dom";
 import type {
 Session
 } from "../api";
@@ -18,7 +23,15 @@ import { useApp } from './useApp';
 export function Profile() {
   const a = useApp(),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    location = useLocation(),
+    addRoleRef = useRef<HTMLDivElement>(null),
+    rolesKnown = a.session?.user.rolesComplete === true;
+  // Перехід із кнопки «Додати роль» у боковому меню: показуємо блок додавання ролі.
+  useEffect(() => {
+    if ((location.state as { addRole?: string } | null)?.addRole)
+      addRoleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [location.state]);
   return (
     <>
       <PageTitle
@@ -35,7 +48,14 @@ export function Profile() {
             <p>{a.session?.user.email}</p>
           </div>
         </div>
-        <h3>Відомі ролі</h3><p>Після перезавантаження токен підтверджує лише активну роль. Для іншої ролі спочатку спробуйте перемкнути режим; сервер перевірить доступ.</p>
+        <h3>{rolesKnown ? "Мої ролі" : "Відомі ролі"}</h3>
+        {!rolesKnown && (
+          <p>
+            Не вдалося отримати повний список ролей із сервера. Показано лише
+            відомі. Для іншої ролі спробуйте перемкнути режим — сервер
+            перевірить доступ.
+          </p>
+        )}
         <div className="role-list">
           {a.session?.user.roles.map((r) => (
             <span className="badge completed" key={r}>
@@ -44,6 +64,7 @@ export function Profile() {
             </span>
           ))}
         </div>
+        <div ref={addRoleRef} />
         {canRequestRole("employee") && (
           <form
             onSubmit={async (e) => {
@@ -65,11 +86,11 @@ export function Profile() {
               }
             }}
           >
-            <h3>Стати виконавцем</h3>
+            <h3>Додати роль виконавця</h3>
             <EmployeeFields services={a.services} regions={a.regions} />
             {error && <ErrorBox text={error} />}
             <button className="button primary" disabled={busy}>
-              Запросити роль виконавця
+              Додати роль виконавця
             </button>
           </form>
         )}
@@ -90,7 +111,7 @@ export function Profile() {
               }
             }}
           >
-            Запросити роль замовника
+            Додати роль замовника
           </button>
         )}
         <button className="button secondary logout" onClick={() => a.logout()}>

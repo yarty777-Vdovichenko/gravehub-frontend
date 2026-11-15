@@ -32,6 +32,9 @@ import * as demoData from "../demo";
 import { AdvancedMarket,Directory } from "../NewPages";
 import "../style.css";
 import { Auth } from './Auth';
+import { ForgotPassword } from './ForgotPassword';
+import { ResetPassword } from './ResetPassword';
+import { VerifyEmail } from './VerifyEmail';
 import { Context } from './Context';
 import { ContractList } from './ContractList';
 import { Dashboard } from './Dashboard';
@@ -44,6 +47,13 @@ import { Proposals } from './Proposals';
 import { Services } from './Services';
 import { Shell } from './Shell';
 import { Spinner } from './Spinner';
+const PUBLIC_PATHS = [
+  "/login",
+  "/register",
+  "/verify-email",
+  "/forgot-password",
+  "/reset-password",
+];
 export function App() {
   const [session,setSession]=useState<Session|null>(null),
     [demo,setDemoState]=useState(false),
@@ -75,7 +85,11 @@ export function App() {
     () =>
       listenSession((s) => {
         setSession(s);
-        if (!s && configured && !window.location.pathname.includes("login"))
+        if (
+          !s &&
+          configured &&
+          !PUBLIC_PATHS.some((p) => window.location.pathname.startsWith(p))
+        )
           window.history.replaceState(null, "", "/login");
       }),
     [],
@@ -158,6 +172,9 @@ export function App() {
         <Routes>
           <Route path="/login" element={<Auth />} />
           <Route path="/register" element={<Auth register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route element={<Guard />}>
             <Route
               path="/"
@@ -216,35 +233,32 @@ export function App() {
             <Route
               path="/employees"
               element={
-                <Shell>
-                  <Directory services={services} regions={regions} />
-                </Shell>
-              }
-            />
-            <Route
-              path="/employees/:id"
-              element={
-                <Shell>
-                  <Directory services={services} regions={regions} />
-                </Shell>
-              }
-            />
-            <Route
-              path="/plots"
-              element={
                 <Guard mode="customer">
                   <Shell>
-                    <p>API місць не підтверджений документацією. Розділ недоступний.</p>
+                    <Directory services={services} regions={regions} />
                   </Shell>
                 </Guard>
               }
             />
             <Route
+              path="/employees/:id"
+              element={
+                <Guard mode="customer">
+                  <Shell>
+                    <Directory services={services} regions={regions} />
+                  </Shell>
+                </Guard>
+              }
+            />
+            <Route path="/plots" element={<Navigate to="/map" replace />} />
+            <Route
               path="/map"
               element={
-                <Shell>
-                  <MapPage />
-                </Shell>
+                <Guard mode="customer">
+                  <Shell>
+                    <MapPage />
+                  </Shell>
+                </Guard>
               }
             />
             <Route

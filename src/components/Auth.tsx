@@ -31,16 +31,21 @@ import { EmployeeFields } from './EmployeeFields';
 import { employeeInput } from './employeeInput';
 import { ErrorBox } from './ErrorBox';
 import { Field } from './Field';
+import { ResendVerification } from './ResendVerification';
 import { useApp } from './useApp';
 export function Auth({ register = false }: { register?: boolean }) {
   const a = useApp(),
     nav = useNavigate(),
     [role, setRole] = useState<Mode>("customer"),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [sentTo, setSentTo] = useState(""),
+    [unverifiedEmail, setUnverifiedEmail] = useState("");
   const location = useLocation();
   useEffect(() => {
     setError("");
+    setSentTo("");
+    setUnverifiedEmail("");
   }, [location.pathname]);
   if (a.session && configured && !a.demo) return <Navigate to="/" replace />;
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -53,6 +58,7 @@ export function Auth({ register = false }: { register?: boolean }) {
     }
     setBusy(true);
     setError("");
+    setUnverifiedEmail("");
     const f = new FormData(e.currentTarget);
     try {
       let body: RegisterInput | { email: string; password: string } = {
@@ -73,15 +79,21 @@ export function Auth({ register = false }: { register?: boolean }) {
         )
           throw new Error("Оберіть регіон та спеціалізацію.");
       }
-      const r = await api.post<Session>(
-        register ? "/auth/register" : "/auth/login",
-        body,
-      );
+      if (register) {
+        // Реєстрація не створює сесію: спершу потрібно підтвердити пошту.
+        await api.post<{ message: string }>("/auth/register", body);
+        setSentTo(body.email);
+        return;
+      }
+      const r = await api.post<Session>("/auth/login", body);
       if (r.data.accessToken) applySession(r.data);
       else await refresh();
       nav(typeof location.state?.from==="string" && location.state.from.startsWith("/") && !location.state.from.startsWith("//")?location.state.from:"/");
     } catch (e) {
-      setError(errorText(e));
+      const text = errorText(e);
+      setError(text);
+      if (!register && /пошт/i.test(text))
+        setUnverifiedEmail(String(f.get("email")));
     } finally {
       setBusy(false);
     }
@@ -124,6 +136,20 @@ export function Auth({ register = false }: { register?: boolean }) {
               ? "Почніть з кількох простих кроків."
               : "Увійдіть, щоб продовжити піклуватися."}
           </p>
+          {sentTo ? (
+            <div className="check-email" role="status">
+              <h2>Перевірте пошту</h2>
+              <p>
+                Ми надіслали лист із посиланням для підтвердження на{" "}
+                <b>{sentTo}</b>. Посилання діє 24 години. Після підтвердження
+                можна увійти в кабінет.
+              </p>
+              <ResendVerification email={sentTo} />
+              <p className="auth-link">
+                <Link to="/login">Перейти до входу</Link>
+              </p>
+            </div>
+          ) : (
           <form onSubmit={submit}>
             {register && (
               <>
@@ -170,6 +196,12 @@ export function Auth({ register = false }: { register?: boolean }) {
               <EmployeeFields services={a.services} regions={a.regions} />
             )}
             {error && <ErrorBox text={error} />}
+            {unverifiedEmail && <ResendVerification email={unverifiedEmail} />}
+            {!register && (
+              <p className="auth-link forgot-link">
+                <Link to="/forgot-password">Забули пароль?</Link>
+              </p>
+            )}
             <button className="button primary" disabled={busy}>
               {busy
                 ? "Зачекайте…"
@@ -179,14 +211,15 @@ export function Auth({ register = false }: { register?: boolean }) {
               <ArrowRight size={17} />
             </button>
           </form>
-          <p className="auth-link">
+          )}
+          {!sentTo && <p className="auth-link">
             {register
               ? "Вже маєте обліковий запис?"
               : "Ще немає облікового запису?"}{" "}
             <Link to={register ? "/login" : "/register"}>
               {register ? "Увійти" : "Зареєструватися"}
             </Link>
-          </p>
+          </p>}
           {!configured && (
             <div className="demo-entry">
               <span>Познайомтеся з GraveHub</span>

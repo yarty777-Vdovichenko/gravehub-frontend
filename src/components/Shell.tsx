@@ -7,7 +7,9 @@ Heart,
 LayoutDashboard,
 Leaf,
 LogOut,
+MapPin,
 Menu,
+Plus,
 Search,
 Send,
 ShieldCheck,
@@ -21,6 +23,9 @@ Link,
 NavLink,
 useNavigate
 } from "react-router-dom";
+import type {
+Mode
+} from "../api";
 import {
 errorText
 } from "../api";
@@ -30,6 +35,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const a = useApp(),
     [mobile, setMobile] = useState(false),
     nav = useNavigate();
+  // Якщо бекенд (GET /auth/me) підтвердив, що роль лише одна, перемикач не потрібен.
+  const rolesKnown = a.session?.user.rolesComplete === true,
+    otherMode: Mode = a.mode === "customer" ? "employee" : "customer",
+    hasOtherRole = !!a.session?.user.roles.includes(otherMode);
   const links = [
     { to: "/", icon: LayoutDashboard, text: "Огляд" },
     {
@@ -43,9 +52,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
           { to: "/proposals", icon: Send, text: "Мої пропозиції" },
         ]
       : []),
-    
-    { to: "/employees", icon: Search, text: "Знайти виконавця" },
-    
+    ...(a.mode === "customer"
+      ? [
+          { to: "/employees", icon: Search, text: "Знайти виконавця" },
+          { to: "/map", icon: MapPin, text: "Карта кладовищ" },
+        ]
+      : []),
     { to: "/services", icon: Flower2, text: "Послуги" },
     { to: "/profile", icon: UserRound, text: "Мій профіль" },
   ];
@@ -60,34 +72,48 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <i />
         </Link>
         <div className="workspace-label">ОСОБИСТИЙ КАБІНЕТ</div>
-        <div className="mode-switch">
-          <button
-            className={a.mode === "customer" ? "selected" : ""}
-            onClick={() => {
-              if (a.demo && !a.session?.user.roles.includes("customer"))
-                nav("/profile");
-              else
-                a.switchMode("customer")
-                  .then(() => nav("/"))
-                  .catch((e) => a.notice(errorText(e)));
-            }}
+        {hasOtherRole || !rolesKnown ? (
+          <div className="mode-switch">
+            <button
+              className={a.mode === "customer" ? "selected" : ""}
+              onClick={() => {
+                if (a.demo && !a.session?.user.roles.includes("customer"))
+                  nav("/profile");
+                else
+                  a.switchMode("customer")
+                    .then(() => nav("/"))
+                    .catch((e) => a.notice(errorText(e)));
+              }}
+            >
+              Замовник
+            </button>
+            <button
+              className={a.mode === "employee" ? "selected" : ""}
+              onClick={() => {
+                if (a.demo && !a.session?.user.roles.includes("employee"))
+                  nav("/profile");
+                else
+                  a.switchMode("employee")
+                    .then(() => nav("/"))
+                    .catch((e) => a.notice(errorText(e)));
+              }}
+            >
+              Виконавець
+            </button>
+          </div>
+        ) : (
+          <Link
+            className="add-role-button"
+            to="/profile"
+            state={{ addRole: otherMode }}
+            onClick={() => setMobile(false)}
           >
-            Замовник
-          </button>
-          <button
-            className={a.mode === "employee" ? "selected" : ""}
-            onClick={() => {
-              if (a.demo && !a.session?.user.roles.includes("employee"))
-                nav("/profile");
-              else
-                a.switchMode("employee")
-                  .then(() => nav("/"))
-                  .catch((e) => a.notice(errorText(e)));
-            }}
-          >
-            Виконавець
-          </button>
-        </div>
+            <Plus size={15} />
+            {otherMode === "employee"
+              ? "Додати роль виконавця"
+              : "Додати роль замовника"}
+          </Link>
+        )}
         <nav>
           {links.map((l) => (
             <NavLink
@@ -162,9 +188,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               <LogOut size={18} />
             </button>
-            <span className="avatar small">
-              {a.session?.user.name?.slice(0, 1)}
-            </span>
           </div>
         </header>
         {a.demo && (
