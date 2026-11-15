@@ -1,6 +1,14 @@
 import type { Cemetery } from "../new-api";
 import "../new-pages.css";
-import { CITIES, MAP_H, MAP_W, outlinePath, project } from "./ukraine";
+
+const BOUNDS = { west: 22.1, east: 40.2, south: 44.2, north: 52.4 };
+
+function mapPoint(longitude: number, latitude: number) {
+  return {
+    x: 160 + ((longitude - BOUNDS.west) / (BOUNDS.east - BOUNDS.west)) * 400,
+    y: 10 + ((BOUNDS.north - latitude) / (BOUNDS.north - BOUNDS.south)) * 280,
+  };
+}
 
 export function CemeteryMap({
   cemeteries,
@@ -12,50 +20,66 @@ export function CemeteryMap({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="ukraine-map">
+    <div className="cemetery-overview">
       <svg
-        viewBox={`0 0 ${MAP_W} ${MAP_H}`}
+        viewBox="0 0 720 320"
         role="group"
-        aria-label="Схематична карта України з кладовищами"
+        aria-label="Карта України з розташуванням кладовищ"
       >
-        <path className="ua-land" d={outlinePath()} />
-        {CITIES.map((c) => {
-          const { x, y } = project(c.lon, c.lat);
+        <title>Карта України</title>
+        <image
+          href="/ukraine-map.svg"
+          x="0"
+          y="0"
+          width="720"
+          height="320"
+          aria-hidden="true"
+        />
+        {cemeteries.map((cemetery, index) => {
+          const { x, y } = mapPoint(cemetery.longitude, cemetery.latitude);
+          const selected = cemetery.id === selectedId;
           return (
-            <g key={c.name} className="ua-city">
-              <circle cx={x} cy={y} r={3} />
-              <text x={x + 6} y={y + 4}>
-                {c.name}
+            <g
+              key={cemetery.id}
+              className="cemetery-pin"
+              role="button"
+              tabIndex={0}
+              aria-pressed={selected}
+              aria-label={`${cemetery.name}, ${cemetery.city}`}
+              onClick={() => onSelect(cemetery.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(cemetery.id);
+                }
+              }}
+            >
+              <circle
+                className="cemetery-pin-halo"
+                cx={x}
+                cy={y}
+                r={selected ? 12 : 9}
+              />
+              <circle
+                className="cemetery-pin-dot"
+                cx={x}
+                cy={y}
+                r={selected ? 6 : 4.5}
+              />
+              <text
+                className="cemetery-pin-label"
+                x={x + 10}
+                y={y + (index % 2 ? 14 : -8)}
+              >
+                {cemetery.name}
               </text>
             </g>
           );
         })}
-        {cemeteries.map((c) => {
-          const { x, y } = project(c.longitude, c.latitude);
-          const on = c.id === selectedId;
-          return (
-            <g
-              key={c.id}
-              className={on ? "ua-pin selected" : "ua-pin"}
-              tabIndex={0}
-              role="button"
-              aria-pressed={on}
-              aria-label={`${c.name}, ${c.city}`}
-              onClick={() => onSelect(c.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(c.id);
-                }
-              }}
-            >
-              <title>{`${c.name}, ${c.city}`}</title>
-              <circle className="ua-pin-halo" cx={x} cy={y} r={on ? 15 : 11} />
-              <circle className="ua-pin-dot" cx={x} cy={y} r={on ? 7 : 5.5} />
-            </g>
-          );
-        })}
       </svg>
+      <small>
+        Межі карти: © OpenStreetMap contributors / geoBoundaries (ODbL 1.0).
+      </small>
     </div>
   );
 }

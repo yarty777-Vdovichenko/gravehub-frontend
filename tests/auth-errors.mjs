@@ -24,14 +24,30 @@ try {
     listenSession,
   } = await import('../.test-tmp/api.mjs');
 
+  let currentUser = {
+    id: 'user-1',
+    email: 'user@example.com',
+    name: 'User',
+    roles: ['customer', 'employee'],
+    mode: 'employee',
+  };
+  let currentUserRequest;
   api.defaults.adapter = async (config) => {
     let data;
-    if (config.url === '/auth/resend-verification') {
+    if (config.url === '/auth/me') {
+      currentUserRequest = config;
+      data = currentUser;
+    } else if (config.url === '/auth/resend-verification') {
       data = {
         message:
           'Якщо акаунт існує і пошта не підтверджена, лист буде надіслано',
       };
     } else if (config.url === '/auth/roles/customer') {
+      currentUser = {
+        ...currentUser,
+        roles: ['employee', 'customer'],
+        mode: 'customer',
+      };
       data = {
         accessToken: `header.${b64({ sub: 'user-1', role: 'customer' })}.sig`,
       };
@@ -86,17 +102,21 @@ try {
     accessToken: `header.${b64({ sub: 'user-1', role: 'employee' })}.sig`,
   });
   assert.equal(session.mode, 'employee');
-  assert.deepEqual(session.user.roles, ['employee']);
+  assert.deepEqual(session.user.roles, ['customer', 'employee']);
   assert.equal(session.user.id, 'user-1');
-  assert.equal(session.user.email, '');
+  assert.equal(session.user.email, 'user@example.com');
+  assert.equal(currentUserRequest.url, '/auth/me');
+  assert.equal(
+    currentUserRequest.headers.get('Authorization'),
+    `Bearer header.${b64({ sub: 'user-1', role: 'employee' })}.sig`,
+  );
 
   let latestSession;
   const stopListening = listenSession((value) => {
     latestSession = value;
   });
   applySession(session);
-  session.user.email = 'user@example.com';
-  session.user.name = 'User';
+  currentUser = { ...currentUser, roles: ['employee'], mode: 'employee' };
   applySession(
     await hydrateSession({
       accessToken: `header.${b64({ sub: 'user-1', role: 'employee' })}.sig`,

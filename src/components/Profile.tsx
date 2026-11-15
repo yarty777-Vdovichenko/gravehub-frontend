@@ -33,12 +33,13 @@ export function Profile() {
             <p>{a.session?.user.email}</p>
           </div>
         </div>
-        <h3>Режими</h3><div className="role-list"><button className="button secondary" onClick={()=>a.switchMode("customer")}>Режим замовника</button><button className="button secondary" onClick={()=>a.switchMode("employee")}>Режим виконавця</button></div><h3>Відомі ролі</h3><p>Після перезавантаження токен підтверджує лише активну роль. Для іншої ролі спочатку спробуйте перемкнути режим; сервер перевірить доступ.</p>
+        <h3>Ролі акаунта</h3>
         <div className="role-list">
           {a.session?.user.roles.map((r) => (
             <span className="badge completed" key={r}>
               <Check size={13} />
-              {r === "customer" ? "Замовник" : "Виконавець"}
+              {r === "customer" ? "Замовник" : "Працівник"}
+              {r === a.mode && " · активна"}
             </span>
           ))}
         </div>
