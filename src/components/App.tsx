@@ -1,6 +1,7 @@
 import {
 Check,
-X
+X,
+AlertCircle
 } from "lucide-react";
 import {
 useCallback,
@@ -31,10 +32,7 @@ refresh
 import * as demoData from "../demo";
 import { AdvancedMarket,Directory } from "../NewPages";
 import "../style.css";
-import { Auth } from './Auth';
-import { ForgotPassword } from './ForgotPassword';
-import { ResetPassword } from './ResetPassword';
-import { VerifyEmail } from './VerifyEmail';
+import { Auth, AuthFlow } from './Auth';
 import { Context } from './Context';
 import { ContractList } from './ContractList';
 import { Dashboard } from './Dashboard';
@@ -47,13 +45,6 @@ import { Proposals } from './Proposals';
 import { Services } from './Services';
 import { Shell } from './Shell';
 import { Spinner } from './Spinner';
-const PUBLIC_PATHS = [
-  "/login",
-  "/register",
-  "/verify-email",
-  "/forgot-password",
-  "/reset-password",
-];
 export function App() {
   const [session,setSession]=useState<Session|null>(null),
     [demo,setDemoState]=useState(false),
@@ -81,19 +72,7 @@ export function App() {
         contract: demoData.contracts[1],
       },
     ]);
-  useEffect(
-    () =>
-      listenSession((s) => {
-        setSession(s);
-        if (
-          !s &&
-          configured &&
-          !PUBLIC_PATHS.some((p) => window.location.pathname.startsWith(p))
-        )
-          window.history.replaceState(null, "", "/login");
-      }),
-    [],
-  );
+  useEffect(() => listenSession((s) => setSession(s)), []);
   useEffect(() => {
     if (configured) {
       refresh()
@@ -141,11 +120,12 @@ export function App() {
   const logout = async () => {
     try {
       if (!demo) await api.post("/auth/logout");
+    } catch (e) {
+      notice(errorText(e));
+    } finally {
       setDemoState(false);
       applySession(null);
       setSession(null);
-    } catch (e) {
-      notice(errorText(e));
     }
   };
   if(!configured)return <div className="panel detail-panel"><h1>Потрібна адреса API</h1><p>Створіть .env на основі .env.example, задайте VITE_API_URL і перезапустіть Vite.</p></div>;
@@ -172,9 +152,9 @@ export function App() {
         <Routes>
           <Route path="/login" element={<Auth />} />
           <Route path="/register" element={<Auth register />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<AuthFlow kind="verify" />} />
+          <Route path="/reset-password" element={<AuthFlow kind="reset" />} />
+          <Route path="/forgot-password" element={<AuthFlow kind="forgot" />} />
           <Route element={<Guard />}>
             <Route
               path="/"
@@ -233,32 +213,35 @@ export function App() {
             <Route
               path="/employees"
               element={
-                <Guard mode="customer">
-                  <Shell>
-                    <Directory services={services} regions={regions} />
-                  </Shell>
-                </Guard>
+                <Shell>
+                  <Directory services={services} regions={regions} />
+                </Shell>
               }
             />
             <Route
               path="/employees/:id"
               element={
+                <Shell>
+                  <Directory services={services} regions={regions} />
+                </Shell>
+              }
+            />
+            <Route
+              path="/plots"
+              element={
                 <Guard mode="customer">
                   <Shell>
-                    <Directory services={services} regions={regions} />
+                    <p>API місць не підтверджений документацією. Розділ недоступний.</p>
                   </Shell>
                 </Guard>
               }
             />
-            <Route path="/plots" element={<Navigate to="/map" replace />} />
             <Route
               path="/map"
               element={
-                <Guard mode="customer">
-                  <Shell>
-                    <MapPage />
-                  </Shell>
-                </Guard>
+                <Shell>
+                  <MapPage />
+                </Shell>
               }
             />
             <Route
@@ -281,8 +264,8 @@ export function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         {toast && (
-          <div role="status" className="toast">
-            <Check size={18} />
+          <div role="status" className={"toast "+(toast.toLowerCase().includes("помил")||toast.toLowerCase().includes("не вдалося")||toast.toLowerCase().includes("недоступ")||toast.toLowerCase().includes("невір")||toast.toLowerCase().includes("заверш")||toast.toLowerCase().includes("error")||toast.toLowerCase().includes("failed")?"toast-error":"toast-success")}>
+            {toast.toLowerCase().includes("помил") || toast.toLowerCase().includes("не вдалося") || toast.toLowerCase().includes("недоступ") || toast.toLowerCase().includes("невір") || toast.toLowerCase().includes("заверш") || toast.toLowerCase().includes("error") || toast.toLowerCase().includes("failed") ? <AlertCircle size={18}/> : <Check size={18}/>}
             {toast}
             <button aria-label="Закрити повідомлення" onClick={() => setToast("")}>
               <X size={16} />

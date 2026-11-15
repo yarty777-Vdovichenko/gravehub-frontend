@@ -27,7 +27,8 @@ export function AdvancedMarket({
     [page, setPage] = useState(1),
     [limit, setLimit] = useState(10),
     [data, setData] = useState<MetaPage<Contract>>(),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [status,setStatus]=useState("");
   useEffect(() => {
     const c = new AbortController();
     setData(undefined);
@@ -48,6 +49,7 @@ export function AdvancedMarket({
       <div className="page-title">
         <h1>{endpoint === "/contracts/my" ? "Мої замовлення" : "Знайти замовлення"}</h1>
       </div>
+      <label>Статус замовлення <select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Усі статуси</option>{["open","in_progress","awaiting_confirmation","completed","cancelled"].map(st=><option key={st} value={st}>{st}</option>)}</select></label>
       <Filters
         employee={false}
         services={services}
@@ -64,8 +66,8 @@ export function AdvancedMarket({
       ) : (
         data && (
           <section className="panel">
-            {data.items.length ? (
-              data.items.map((c) => (
+            {data.items.filter(c=>!status||c.status===status).length ? (
+              data.items.filter(c=>!status||c.status===status).map((c) => (
                 <Link
                   className="order-row"
                   key={c.id}

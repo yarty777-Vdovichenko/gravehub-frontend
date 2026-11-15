@@ -83,7 +83,7 @@ export function Details() {
         }
       }
     } catch (e) {
-      setError(errorText(e));
+      if(version===loadVersion.current)setError(errorText(e));
     }
   }, [id, a.demo, a.contracts, a.mode, page, a.demoProposals]);
   useEffect(() => {
