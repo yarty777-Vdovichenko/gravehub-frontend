@@ -157,6 +157,14 @@ a.button:hover {
   color: #8b948e;
   font-weight: 650;
 }
+.mode-switch .add-role-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  color: #356046;
+}
 .mode-switch .selected {
   background: white;
   color: #356046;

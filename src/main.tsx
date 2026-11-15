@@ -303,17 +303,21 @@ function App() {
             <Route
               path="/employees"
               element={
-                <Shell>
-                  <Directory services={services} regions={regions} />
-                </Shell>
+                <Guard mode="customer">
+                  <Shell>
+                    <Directory services={services} regions={regions} />
+                  </Shell>
+                </Guard>
               }
             />
             <Route
               path="/employees/:id"
               element={
-                <Shell>
-                  <Directory services={services} regions={regions} />
-                </Shell>
+                <Guard mode="customer">
+                  <Shell>
+                    <Directory services={services} regions={regions} />
+                  </Shell>
+                </Guard>
               }
             />
             <Route
@@ -329,9 +333,11 @@ function App() {
             <Route
               path="/map"
               element={
-                <Shell>
-                  <MapPage />
-                </Shell>
+                <Guard mode="customer">
+                  <Shell>
+                    <MapPage />
+                  </Shell>
+                </Guard>
               }
             />
             <Route
@@ -396,10 +402,12 @@ function Shell({ children }: { children: React.ReactNode }) {
           { to: "/proposals", icon: Send, text: "Мої пропозиції" },
         ]
       : []),
-    { to: "/map", icon: MapPin, text: "Карта кладовища" },
-    { to: "/employees", icon: Search, text: "Знайти виконавця" },
     ...(a.mode === "customer"
-      ? [{ to: "/plots", icon: MapPin, text: "Мої місця" }]
+      ? [
+          { to: "/map", icon: MapPin, text: "Карта кладовища" },
+          { to: "/employees", icon: Search, text: "Знайти виконавця" },
+          { to: "/plots", icon: MapPin, text: "Мої місця" },
+        ]
       : []),
     { to: "/services", icon: Flower2, text: "Послуги" },
     { to: "/profile", icon: UserRound, text: "Мій профіль" },
@@ -416,32 +424,44 @@ function Shell({ children }: { children: React.ReactNode }) {
         </Link>
         <div className="workspace-label">ОСОБИСТИЙ КАБІНЕТ</div>
         <div className="mode-switch">
-          <button
-            className={a.mode === "customer" ? "selected" : ""}
-            onClick={() => {
-              if (a.demo && !a.session?.user.roles.includes("customer"))
-                nav("/profile");
-              else
-                a.switchMode("customer")
-                  .then(() => nav("/"))
-                  .catch((e) => a.notice(errorText(e)));
-            }}
-          >
-            Замовник
-          </button>
-          <button
-            className={a.mode === "employee" ? "selected" : ""}
-            onClick={() => {
-              if (a.demo && !a.session?.user.roles.includes("employee"))
-                nav("/profile");
-              else
-                a.switchMode("employee")
-                  .then(() => nav("/"))
-                  .catch((e) => a.notice(errorText(e)));
-            }}
-          >
-            Виконавець
-          </button>
+          {a.session?.user.roles.includes("customer") &&
+          a.session.user.roles.includes("employee") ? (
+            <>
+              <button
+                className={a.mode === "customer" ? "selected" : ""}
+                onClick={() =>
+                  a
+                    .switchMode("customer")
+                    .then(() => nav("/"))
+                    .catch((e) => a.notice(errorText(e)))
+                }
+              >
+                Замовник
+              </button>
+              <button
+                className={a.mode === "employee" ? "selected" : ""}
+                onClick={() =>
+                  a
+                    .switchMode("employee")
+                    .then(() => nav("/"))
+                    .catch((e) => a.notice(errorText(e)))
+                }
+              >
+                Виконавець
+              </button>
+            </>
+          ) : (
+            <button
+              className="add-role-button"
+              onClick={() => nav("/profile")}
+            >
+              <Plus size={14} />
+              Додати роль{" "}
+              {a.session?.user.roles.includes("customer")
+                ? "виконавця"
+                : "замовника"}
+            </button>
+          )}
         </div>
         <nav>
           {links.map((l) => (
@@ -517,9 +537,6 @@ function Shell({ children }: { children: React.ReactNode }) {
             >
               <LogOut size={18} />
             </button>
-            <span className="avatar small">
-              {a.session?.user.name?.slice(0, 1)}
-            </span>
           </div>
         </header>
         {a.demo && (
@@ -623,7 +640,9 @@ function CreateButton() {
 function Dashboard() {
   const a = useApp(),
     list = useList(
-      a.mode === "customer" ? "/contracts/my" : "/employee/my-contracts",
+      a.mode === "customer"
+        ? "/contracts/my"
+        : "/employee/my-contracts/my",
     ),
     [filter, setFilter] = useState("all");
   const active = list.items.filter((c) =>
@@ -675,16 +694,18 @@ function Dashboard() {
           </span>
         </div>
       </section>
-      <Link className="map-dashboard-link" to="/map">
-        <div>
-          <h2>Знайдіть місце на карті</h2>
-          <p>
-            Інтерактивний план кладовища · вибір ділянки · навчальна
-            демонстрація
-          </p>
-        </div>
-        <MapPin size={26} />
-      </Link>
+      {a.mode === "customer" && (
+        <Link className="map-dashboard-link" to="/map">
+          <div>
+            <h2>Знайдіть місце на карті</h2>
+            <p>
+              Інтерактивний план кладовища · вибір ділянки · навчальна
+              демонстрація
+            </p>
+          </div>
+          <MapPin size={26} />
+        </Link>
+      )}
       <section className="stats">
         <Stat
           label="Усього замовлень"
@@ -717,7 +738,8 @@ function Dashboard() {
         <section className="panel orders">
           <div className="panel-title">
             <h2>
-              Мої замовлення <span>{list.total}</span>
+              {a.mode === "customer" ? "Мої замовлення" : "Моя робота"}{" "}
+              <span>{list.total}</span>
             </h2>
             <Link to="/contracts">
               Усі замовлення <ArrowUpRight size={15} />
@@ -943,7 +965,7 @@ function ContractList({ market = false }: { market?: boolean }) {
         ? "/employee/contracts"
         : a.mode === "customer"
           ? "/contracts/my"
-          : "/employee/my-contracts",
+          : "/employee/my-contracts/my",
       status,
       market ? a.contracts.filter((c) => c.status === "open") : undefined,
     );
@@ -1920,8 +1942,11 @@ function Profile() {
               }
               setBusy(true);
               try {
-                await api.post("/auth/roles/employee", body);
-                await refresh();
+                const r = await api.post<Session>(
+                  "/auth/roles/employee",
+                  body,
+                );
+                applySession(r.data);
                 a.notice("Роль виконавця додано");
               } catch (e) {
                 setError(errorText(e));
@@ -1945,8 +1970,8 @@ function Profile() {
             onClick={async () => {
               setBusy(true);
               try {
-                await api.post("/auth/roles/customer");
-                await refresh();
+                const r = await api.post<Session>("/auth/roles/customer");
+                applySession(r.data);
                 a.notice("Роль замовника додано");
               } catch (e) {
                 a.notice(errorText(e));

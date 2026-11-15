@@ -16,6 +16,26 @@ import type {
 } from "./new-api";
 import "./new-pages.css";
 const cash = (n: number) => new Intl.NumberFormat("uk-UA").format(n) + " ₴";
+const ukraineBounds = {
+  west: 22.1,
+  east: 40.2,
+  south: 44.2,
+  north: 52.4,
+};
+function ukraineMapPoint(longitude: number, latitude: number) {
+  return {
+    x:
+      160 +
+      ((longitude - ukraineBounds.west) /
+        (ukraineBounds.east - ukraineBounds.west)) *
+        400,
+    y:
+      10 +
+      ((ukraineBounds.north - latitude) /
+        (ukraineBounds.north - ukraineBounds.south)) *
+        280,
+  };
+}
 function ErrorView({ error }: { error: string }) {
   return error ? (
     <div role="alert" className="error">
@@ -501,6 +521,7 @@ export function LivePlots() {
     reserved: "Зарезервоване",
     sold: "Продане",
   };
+  const selectedCemetery = cemeteries.find((c) => c.id === cemeteryId);
   const xs = [...new Set(plots.map((p) => p.positionX))].sort((a, b) => a - b),
     ys = [...new Set(plots.map((p) => p.positionY))].sort((a, b) => a - b);
   return (
@@ -509,8 +530,7 @@ export function LivePlots() {
         <div>
           <h1>{mine ? "Мої придбані місця" : "Кладовища та місця"}</h1>
           <p>
-            Дані та доступність із сервера. Кредитний розрахунок є
-            мок-розрахунком.
+            Дані, доступність і кредитний розрахунок надходять із сервера.
           </p>
         </div>
         <Link to={mine ? "/map" : "/plots"} className="button secondary">
@@ -566,21 +586,23 @@ export function LivePlots() {
             <div
               className="cemetery-overview"
               role="group"
-              aria-label="Маркери кладовищ на координатній карті"
+              aria-label="Кладовища на карті України"
             >
               <svg
-                viewBox="0 0 720 260"
-                aria-label="Координатна карта кладовищ"
+                viewBox="0 0 720 320"
+                aria-label="Карта України з маркерами кладовищ"
               >
-                <rect width="720" height="260" fill="#edf3e6" />
+                <title>Карта України</title>
+                <image
+                  href="/ukraine-map.svg"
+                  x="0"
+                  y="0"
+                  width="720"
+                  height="320"
+                  aria-hidden="true"
+                />
                 {cemeteries.map((c, i) => {
-                  const minX = Math.min(...cemeteries.map((c) => c.longitude)),
-                    maxX = Math.max(...cemeteries.map((c) => c.longitude)),
-                    minY = Math.min(...cemeteries.map((c) => c.latitude)),
-                    maxY = Math.max(...cemeteries.map((c) => c.latitude));
-                  const x =
-                      40 + ((c.longitude - minX) / (maxX - minX || 1)) * 620,
-                    y = 200 - ((c.latitude - minY) / (maxY - minY || 1)) * 150;
+                  const { x, y } = ukraineMapPoint(c.longitude, c.latitude);
                   return (
                     <g
                       role="button"
@@ -609,9 +631,9 @@ export function LivePlots() {
                 })}
               </svg>
               <small>
-                Координатна схема маркерів без картографічної підкладки.{" "}
-                {cemeteries.find((c) => c.id === cemeteryId)?.latitude},{" "}
-                {cemeteries.find((c) => c.id === cemeteryId)?.longitude}
+                {selectedCemetery
+                  ? `Координати кладовища: ${selectedCemetery.latitude}, ${selectedCemetery.longitude}. Межі: © OpenStreetMap contributors / geoBoundaries (ODbL 1.0).`
+                  : "Кладовищ поки немає. Межі: © OpenStreetMap contributors / geoBoundaries (ODbL 1.0)."}
               </small>
             </div>
           </section>
@@ -737,7 +759,7 @@ export function LivePlots() {
                           }
                         >
                           <option value="full">Повна</option>
-                          <option value="credit">Кредит (мок)</option>
+                          <option value="credit">Кредит</option>
                         </select>
                       </label>
                       {paymentType === "credit" && (

@@ -17,10 +17,54 @@ await build({
 try {
   const {
     api,
+    applySession,
     errorText,
     hydrateSession,
     isEmailVerificationError,
+    listenSession,
   } = await import('../.test-tmp/api.mjs');
+
+  let currentUser = {
+    id: 'user-1',
+    email: 'user@example.com',
+    name: 'User',
+    roles: ['customer', 'employee'],
+    mode: 'employee',
+  };
+  let currentUserRequest;
+  api.defaults.adapter = async (config) => {
+    let data;
+    if (config.url === '/auth/me') {
+      currentUserRequest = config;
+      data = currentUser;
+    } else if (config.url === '/auth/resend-verification') {
+      data = {
+        message:
+          'Якщо акаунт існує і пошта не підтверджена, лист буде надіслано',
+      };
+    } else if (config.url === '/auth/roles/customer') {
+      currentUser = {
+        ...currentUser,
+        roles: ['employee', 'customer'],
+        mode: 'customer',
+      };
+      data = {
+        accessToken: `header.${b64({ sub: 'user-1', role: 'customer' })}.sig`,
+      };
+    } else {
+      data = {
+        message:
+          'Акаунт створено. Підтвердіть електронну пошту, щоб увійти.',
+      };
+    }
+    return {
+      data,
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+    };
+  };
 
   const loginError = {
     config: { url: '/auth/login' },
@@ -58,26 +102,35 @@ try {
     accessToken: `header.${b64({ sub: 'user-1', role: 'employee' })}.sig`,
   });
   assert.equal(session.mode, 'employee');
-  assert.deepEqual(session.user.roles, ['employee']);
+  assert.deepEqual(session.user.roles, ['customer', 'employee']);
   assert.equal(session.user.id, 'user-1');
+  assert.equal(session.user.email, 'user@example.com');
+  assert.equal(currentUserRequest.url, '/auth/me');
+  assert.equal(
+    currentUserRequest.headers.get('Authorization'),
+    `Bearer header.${b64({ sub: 'user-1', role: 'employee' })}.sig`,
+  );
+
+  let latestSession;
+  const stopListening = listenSession((value) => {
+    latestSession = value;
+  });
+  currentUser = { ...currentUser, roles: ['employee'], mode: 'employee' };
+  applySession(
+    await hydrateSession({
+      accessToken: `header.${b64({ sub: 'user-1', role: 'employee' })}.sig`,
+    }),
+  );
+  assert.deepEqual(latestSession.user.roles, ['employee']);
+  const addedRole = await api.post('/auth/roles/customer');
+  assert.deepEqual(addedRole.data.user.roles, ['employee', 'customer']);
+  assert.equal(addedRole.data.mode, 'customer');
+  applySession(null);
+  stopListening();
 
   const registrationMessage = {
     message: 'Акаунт створено. Підтвердіть електронну пошту, щоб увійти.',
   };
-  const resendMessage = {
-    message:
-      'Якщо акаунт існує і пошта не підтверджена, лист буде надіслано',
-  };
-  api.defaults.adapter = async (config) => ({
-    data:
-      config.url === '/auth/resend-verification'
-        ? resendMessage
-        : registrationMessage,
-    status: 201,
-    statusText: 'Created',
-    headers: {},
-    config,
-  });
   const registration = await api.post('/auth/register', {
     email: 'user@example.com',
     password: 'password',
@@ -89,7 +142,10 @@ try {
   const resend = await api.post('/auth/resend-verification', {
     email: 'user@example.com',
   });
-  assert.deepEqual(resend.data, resendMessage);
+  assert.deepEqual(resend.data, {
+    message:
+      'Якщо акаунт існує і пошта не підтверджена, лист буде надіслано',
+  });
   assert.equal(resend.config.url, '/auth/resend-verification');
   assert.deepEqual(JSON.parse(resend.config.data), {
     email: 'user@example.com',

@@ -33,6 +33,12 @@
 .cemetery-overview svg {
   width: 100%;
   min-width: 500px;
+  background: #e7f0f1;
+  border-radius: 8px;
+}
+.cemetery-overview g:focus circle {
+  stroke: #1d4930;
+  stroke-width: 2;
 }
 .detail-panel > .button {
   margin: 8px 4px 12px 0;

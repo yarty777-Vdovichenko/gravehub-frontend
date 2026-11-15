@@ -19,6 +19,13 @@ export interface User {
 export interface AuthResponse {
   accessToken: string;
 }
+export interface CurrentUserResponse {
+  id: string;
+  email: string;
+  name: string;
+  roles: Mode[];
+  mode: Mode;
+}
 export interface RegisterResponse {
   message: string;
 }
@@ -135,41 +142,34 @@ function isMode(value: unknown): value is Mode {
   return value === "customer" || value === "employee";
 }
 export async function hydrateSession(response: AuthResponse): Promise<Session> {
-  const part = response.accessToken.split(".")[1];
+  const part = response.accessToken?.split(".")[1];
   if (!part) throw new Error("Некоректний access token");
   const payload: unknown = JSON.parse(
     atob(part.replace(/-/g, "+").replace(/_/g, "/")),
   );
-  const roleCandidates =
-    payload && typeof payload === "object"
-      ? [
-          "role" in payload ? payload.role : undefined,
-          "mode" in payload ? payload.mode : undefined,
-          "roles" in payload && Array.isArray(payload.roles)
-            ? payload.roles
-            : undefined,
-        ].flat()
-      : [];
-  const roles = roleCandidates.filter(isMode);
   if (
     !payload ||
     typeof payload !== "object" ||
     !("sub" in payload) ||
-    typeof payload.sub !== "string" ||
-    !roles.length
+    typeof payload.sub !== "string"
   )
     throw new Error("Некоректна сесія");
-  const mode = roles[0];
+  const { data: user } = await api.get<CurrentUserResponse>("/auth/me", {
+    headers: { Authorization: `Bearer ${response.accessToken}` },
+  });
+  const roles = Array.isArray(user?.roles) ? user.roles.filter(isMode) : [];
+  if (
+    user.id !== payload.sub ||
+    typeof user.email !== "string" ||
+    typeof user.name !== "string" ||
+    !isMode(user.mode) ||
+    !roles.includes(user.mode)
+  )
+    throw new Error("Некоректна відповідь профілю користувача");
   return {
     accessToken: response.accessToken,
-    user: {
-      id: payload.sub,
-      email: "",
-      name: "Користувач",
-      mode,
-      roles,
-    },
-    mode,
+    user: { ...user, roles },
+    mode: user.mode,
   };
 }
 export function refresh() {
@@ -198,7 +198,7 @@ function publicPath(url = "") {
   const path = normalizeUrl(url);
   return (
     /^(\/services|\/regions)(\/|$)/.test(path) ||
-    /^\/auth\/(login|register|refresh|verify-email|resend-verification)(\/|$)/.test(
+    /^\/auth\/(login|me|register|refresh|verify-email|resend-verification)(\/|$)/.test(
       path,
     )
   );
