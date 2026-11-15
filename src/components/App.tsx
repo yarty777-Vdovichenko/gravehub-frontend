@@ -38,7 +38,7 @@ import { ContractList } from './ContractList';
 import { Dashboard } from './Dashboard';
 import { Details } from './Details';
 import { Guard } from './Guard';
-import { MapPage } from './MapPage';
+import { MapPage, MyPlotsPage } from './MapPage';
 import { NewContract } from './NewContract';
 import { Profile } from './Profile';
 import { Proposals } from './Proposals';
@@ -213,17 +213,21 @@ export function App() {
             <Route
               path="/employees"
               element={
-                <Shell>
-                  <Directory services={services} regions={regions} />
-                </Shell>
+                <Guard mode="customer">
+                  <Shell>
+                    <Directory services={services} regions={regions} />
+                  </Shell>
+                </Guard>
               }
             />
             <Route
               path="/employees/:id"
               element={
-                <Shell>
-                  <Directory services={services} regions={regions} />
-                </Shell>
+                <Guard mode="customer">
+                  <Shell>
+                    <Directory services={services} regions={regions} />
+                  </Shell>
+                </Guard>
               }
             />
             <Route
@@ -231,7 +235,7 @@ export function App() {
               element={
                 <Guard mode="customer">
                   <Shell>
-                    <p>API місць не підтверджений документацією. Розділ недоступний.</p>
+                    <MyPlotsPage />
                   </Shell>
                 </Guard>
               }
@@ -239,9 +243,11 @@ export function App() {
             <Route
               path="/map"
               element={
-                <Shell>
-                  <MapPage />
-                </Shell>
+                <Guard mode="customer">
+                  <Shell>
+                    <MapPage />
+                  </Shell>
+                </Guard>
               }
             />
             <Route

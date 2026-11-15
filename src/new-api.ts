@@ -56,24 +56,36 @@ export interface Purchase {
   downPayment: number | null;
   monthlyPayment: number | null;
 }
-const plotsUnavailable = () =>
-  Promise.reject(
-    new Error("API місць не підтверджений документацією. Розділ недоступний."),
-  );
 export const plotsApi = {
-  creditPreview: (
-    _plotId: string,
-    _months: Credit["months"],
-    _downPayment: number,
-  ): Promise<Credit> => plotsUnavailable(),
-  reserve: (_plotId: string): Promise<Reservation> => plotsUnavailable(),
-  release: (_plotId: string): Promise<void> => plotsUnavailable(),
+  creditPreview: async (
+    plotId: string,
+    months: Credit["months"],
+    downPayment: number,
+  ) => {
+    const { data } = await api.get<Credit>(
+      `/plots/${encodeURIComponent(plotId)}/credit-preview`,
+      { params: { months, downPayment } },
+    );
+    return data;
+  },
+  reserve: async (plotId: string) => {
+    const { data } = await api.post<Reservation>(
+      `/plots/${encodeURIComponent(plotId)}/reserve`,
+    );
+    return data;
+  },
+  release: async (plotId: string) => {
+    await api.delete(`/plots/${encodeURIComponent(plotId)}/reserve`);
+  },
   purchase: (
-    _plotId: string,
-    _input:
+    plotId: string,
+    input:
       | { paymentType: "full" }
       | { paymentType: "credit"; months: Credit["months"]; downPayment: number },
-  ): Promise<Purchase> => plotsUnavailable(),
+  ) =>
+    api
+      .post<Purchase>(`/plots/${encodeURIComponent(plotId)}/purchase`, input)
+      .then((r) => r.data),
 };
 export interface SearchFilters {
   search?: string;
@@ -89,4 +101,37 @@ export interface SearchFilters {
 }
 const profiles=new Map<string,Employee>();
 function normalize(raw:unknown):Employee{if(!raw||typeof raw!=='object'||!('id'in raw)||typeof raw.id!=='string')throw new Error('Некоректні дані виконавця');const r=raw as Record<string,unknown>;const list=(value:unknown):{id:string;name:string}[]=>Array.isArray(value)?value.filter((v):v is {id:string;name:string}=>!!v&&typeof v==='object'&&typeof v.id==='string'&&typeof v.name==='string'):[];const u=r.user as Record<string,unknown>|undefined;return {id:raw.id,rating:typeof r.rating==='number'?r.rating:0,reviewsCount:typeof r.reviewsCount==='number'?r.reviewsCount:undefined,completedContracts:typeof r.completedContracts==='number'?r.completedContracts:0,user:{id:typeof u?.id==='string'?u.id:'',name:typeof u?.name==='string'?u.name:'Виконавець'},regions:list(r.regions),specialization:list(r.specialization??r.specializations??r.services)}}
-export const newApi={employees:async(params:SearchFilters,signal?:AbortSignal)=>{const {data}=await api.get<MetaPage<unknown>>('/employees',{params,signal});const items=data.items.map(normalize);items.forEach(x=>profiles.set(x.id,x));return {...data,items}},employee:async(id:string)=>{const p=profiles.get(id);if(!p)throw new Error('Профіль недоступний після перезавантаження. Відкрийте його зі списку виконавців. Окремий endpoint профілю не використовується.');return p}};
+export const newApi = {
+  employees: async (params: SearchFilters, signal?: AbortSignal) => {
+    const { data } = await api.get<MetaPage<unknown>>("/employees", {
+      params,
+      signal,
+    });
+    const items = data.items.map(normalize);
+    items.forEach((item) => profiles.set(item.id, item));
+    return { ...data, items };
+  },
+  employee: async (id: string) => {
+    const profile = profiles.get(id);
+    if (!profile)
+      throw new Error(
+        "Профіль недоступний після перезавантаження. Відкрийте його зі списку виконавців. Окремий endpoint профілю не використовується.",
+      );
+    return profile;
+  },
+  cemeteries: async () => {
+    const { data } = await api.get<Cemetery[]>("/cemeteries");
+    return data;
+  },
+  plots: async (cemeteryId: string, signal?: AbortSignal) => {
+    const { data } = await api.get<BurialPlot[]>(
+      `/cemeteries/${encodeURIComponent(cemeteryId)}/plots`,
+      { signal },
+    );
+    return data;
+  },
+  mine: async () => {
+    const { data } = await api.get<OwnedPlot[]>("/plots/my");
+    return data;
+  },
+};

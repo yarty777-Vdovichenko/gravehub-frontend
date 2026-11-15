@@ -147,6 +147,9 @@ function normalizeUrl(url?: string) {
   if (/^https?:\/\//i.test(trimmed)) return new URL(trimmed).pathname;
   return trimmed;
 }
+function isMode(value: unknown): value is Mode {
+  return value === "customer" || value === "employee";
+}
 export async function hydrateSession(response: AuthResponse): Promise<Session> {
   const part = response.accessToken?.split(".")[1];
   if (!part) throw new Error("Некоректний access token");
@@ -159,21 +162,25 @@ export async function hydrateSession(response: AuthResponse): Promise<Session> {
     !("sub" in payload) ||
     typeof payload.sub !== "string" ||
     !("role" in payload) ||
-    (payload.role !== "customer" && payload.role !== "employee")
+    !isMode(payload.role)
   )
     throw new Error("Некоректна сесія");
-  const identity = remembered?.user.id === payload.sub ? remembered.user : null;
+  const { data: user } = await api.get<CurrentUserResponse>("/auth/me", {
+    headers: { Authorization: `Bearer ${response.accessToken}` },
+  });
+  const roles = Array.isArray(user?.roles) ? user.roles.filter(isMode) : [];
+  if (
+    user.id !== payload.sub ||
+    typeof user.email !== "string" ||
+    typeof user.name !== "string" ||
+    !isMode(user.mode) ||
+    !roles.includes(user.mode)
+  )
+    throw new Error("Некоректна відповідь профілю користувача");
   return {
     accessToken: response.accessToken,
-    user: {
-      id: payload.sub,
-      email: identity?.email ?? "",
-      name: identity?.name ?? "Користувач",
-      mode: payload.role,
-      roles: Array.from(new Set<Mode>([...(identity?.roles ?? []), payload.role])),
-      rolesComplete: identity?.rolesComplete ?? false,
-    },
-    mode: payload.role,
+    user: { ...user, roles, rolesComplete: true },
+    mode: user.mode,
   };
 }
 export function refresh() {

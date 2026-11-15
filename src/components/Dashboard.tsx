@@ -83,16 +83,15 @@ export function Dashboard() {
           </span>
         </div>
       </section>
-      <Link className="map-dashboard-link" to="/employees">
-        <div>
-          <h2>Знайдіть виконавця</h2>
-          <p>
-            Інтерактивний план кладовища · вибір ділянки · навчальна
-            демонстрація
-          </p>
-        </div>
-        <MapPin size={26} />
-      </Link>
+      {a.mode === "customer" && (
+        <Link className="map-dashboard-link" to="/map">
+          <div>
+            <h2>Карта кладовища</h2>
+            <p>Знайдіть кладовище на карті України та оберіть місце.</p>
+          </div>
+          <MapPin size={26} />
+        </Link>
+      )}
       <section className="stats">
         <Stat
           label="Усього замовлень"

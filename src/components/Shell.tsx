@@ -7,6 +7,7 @@ Heart,
 LayoutDashboard,
 Leaf,
 LogOut,
+MapPin,
 Menu,
 Search,
 Send,
@@ -30,6 +31,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const a = useApp(),
     [mobile, setMobile] = useState(false),
     nav = useNavigate();
+  const hasCustomerRole = a.session?.user.roles.includes("customer") ?? false;
+  const hasEmployeeRole = a.session?.user.roles.includes("employee") ?? false;
   const links = [
     { to: "/", icon: LayoutDashboard, text: "Огляд" },
     {
@@ -43,9 +46,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
           { to: "/proposals", icon: Send, text: "Мої пропозиції" },
         ]
       : []),
-
-    { to: "/employees", icon: Search, text: "Знайти виконавця" },
-
+    ...(a.mode === "customer"
+      ? [
+          { to: "/map", icon: MapPin, text: "Карта кладовища" },
+          { to: "/plots", icon: MapPin, text: "Мої місця" },
+          { to: "/employees", icon: Search, text: "Знайти виконавця" },
+        ]
+      : []),
     { to: "/services", icon: Flower2, text: "Послуги" },
     { to: "/profile", icon: UserRound, text: "Мій профіль" },
   ];
@@ -60,34 +67,37 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <i />
         </Link>
         <div className="workspace-label">ОСОБИСТИЙ КАБІНЕТ</div>
-        <div className="mode-switch">
-          <button
-            className={a.mode === "customer" ? "selected" : ""}
-            onClick={() => {
-              if (a.demo && !a.session?.user.roles.includes("customer"))
-                nav("/profile");
-              else
+        {hasCustomerRole && hasEmployeeRole ? (
+          <div className="mode-switch">
+            <button
+              className={a.mode === "customer" ? "selected" : ""}
+              onClick={() =>
                 a.switchMode("customer")
                   .then(() => nav("/"))
-                  .catch((e) => a.notice(errorText(e)));
-            }}
-          >
-            Замовник
-          </button>
-          <button
-            className={a.mode === "employee" ? "selected" : ""}
-            onClick={() => {
-              if (a.demo && !a.session?.user.roles.includes("employee"))
-                nav("/profile");
-              else
+                  .catch((e) => a.notice(errorText(e)))
+              }
+            >
+              Замовник
+            </button>
+            <button
+              className={a.mode === "employee" ? "selected" : ""}
+              onClick={() =>
                 a.switchMode("employee")
                   .then(() => nav("/"))
-                  .catch((e) => a.notice(errorText(e)));
-            }}
+                  .catch((e) => a.notice(errorText(e)))
+              }
+            >
+              Працівник
+            </button>
+          </div>
+        ) : (
+          <button
+            className="mode-switch add-role-button"
+            onClick={() => nav("/profile")}
           >
-            Виконавець
+            Додати роль {hasCustomerRole ? "працівника" : "замовника"}
           </button>
-        </div>
+        )}
         <nav>
           {links.map((l) => (
             <NavLink
@@ -162,9 +172,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               <LogOut size={18} />
             </button>
-            <span className="avatar small">
-              {a.session?.user.name?.slice(0, 1)}
-            </span>
           </div>
         </header>
         {a.demo && (
