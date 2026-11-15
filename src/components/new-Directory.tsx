@@ -46,18 +46,18 @@ export function Directory({
       .catch((e) => {
         if (!axios.isCancel(e)) setError(errorText(e));
       })
-      .finally(() => setBusy(false));
+      .finally(() => {if(!c.signal.aborted)setBusy(false)});
     return () => c.abort();
   }, [id, page, limit, filters]);
+  useEffect(() => {setReviews(undefined);setReviewPage(1);},[id]);
   useEffect(() => {
-    if (!id) return;
-    api
-      .get<Page<Review>>(`/employees/${id}/reviews`, {
-        params: { page: reviewPage, limit: 10 },
-      })
-      .then((r) => setReviews(r.data))
-      .catch((e) => setError(errorText(e)));
-  }, [id, reviewPage]);
+    if (!id) {setReviews(undefined);return;}
+    const c=new AbortController();setReviews(undefined);
+    api.get<Page<Review>>(`/employees/${id}/reviews`,{params:{page:reviewPage,limit:10},signal:c.signal})
+      .then((r)=>{if(!c.signal.aborted)setReviews(r.data)})
+      .catch((e)=>{if(!c.signal.aborted&&!axios.isCancel(e))setError(errorText(e))});
+    return()=>c.abort();
+  },[id,reviewPage]);
   return (
     <>
       <div className="page-title">

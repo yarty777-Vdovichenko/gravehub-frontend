@@ -40,7 +40,7 @@ export function Dashboard() {
   return (
     <>
       <PageTitle
-        title={`Вітаємо, ${a.session?.user.name?.split(" ")[0] ?? "друже"} 👋`}
+        title="Вітаємо 👋"
         subtitle="Турбота про пам’ять починається з простих кроків."
         action={
           a.mode === "customer" ? (

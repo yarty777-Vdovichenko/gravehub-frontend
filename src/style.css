@@ -1683,3 +1683,6 @@ legend {
     flex-wrap: wrap;
   }
 }
+.toast.toast-error { background: #8b3434; }
+.toast.toast-success { background: #2d4e38; }
+.link-button { border: 0; background: transparent; color: #557749; padding: 0; text-decoration: underline; cursor: pointer; font: inherit; }

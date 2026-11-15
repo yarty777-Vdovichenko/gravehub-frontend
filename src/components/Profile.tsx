@@ -3,17 +3,10 @@ Check,
 LogOut
 } from "lucide-react";
 import {
-useEffect,
-useRef,
 useState
 } from "react";
-import {
-useLocation
-} from "react-router-dom";
-import type {
-Session
-} from "../api";
-import { api,applySession,canRequestRole,errorText } from '../api';
+import type { Session } from "../api";
+import { api,applySession,errorText } from '../api';
 import "../style.css";
 import { EmployeeFields } from './EmployeeFields';
 import { employeeInput } from './employeeInput';
@@ -23,15 +16,7 @@ import { useApp } from './useApp';
 export function Profile() {
   const a = useApp(),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    location = useLocation(),
-    addRoleRef = useRef<HTMLDivElement>(null),
-    rolesKnown = a.session?.user.rolesComplete === true;
-  // Перехід із кнопки «Додати роль» у боковому меню: показуємо блок додавання ролі.
-  useEffect(() => {
-    if ((location.state as { addRole?: string } | null)?.addRole)
-      addRoleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [location.state]);
+    [error, setError] = useState("");
   return (
     <>
       <PageTitle
@@ -48,14 +33,7 @@ export function Profile() {
             <p>{a.session?.user.email}</p>
           </div>
         </div>
-        <h3>{rolesKnown ? "Мої ролі" : "Відомі ролі"}</h3>
-        {!rolesKnown && (
-          <p>
-            Не вдалося отримати повний список ролей із сервера. Показано лише
-            відомі. Для іншої ролі спробуйте перемкнути режим — сервер
-            перевірить доступ.
-          </p>
-        )}
+        <h3>Режими</h3><div className="role-list"><button className="button secondary" onClick={()=>a.switchMode("customer")}>Режим замовника</button><button className="button secondary" onClick={()=>a.switchMode("employee")}>Режим виконавця</button></div><h3>Відомі ролі</h3><p>Після перезавантаження токен підтверджує лише активну роль. Для іншої ролі спочатку спробуйте перемкнути режим; сервер перевірить доступ.</p>
         <div className="role-list">
           {a.session?.user.roles.map((r) => (
             <span className="badge completed" key={r}>
@@ -64,8 +42,7 @@ export function Profile() {
             </span>
           ))}
         </div>
-        <div ref={addRoleRef} />
-        {canRequestRole("employee") && (
+        {!a.session?.user.roles.includes("employee") && (
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -80,21 +57,21 @@ export function Profile() {
                 applySession(result.data);
                 a.notice("Роль виконавця додано");
               } catch (e) {
-                setError(errorText(e));
+                const msg=errorText(e);if(msg.toLowerCase().includes("already have")||msg.toLowerCase().includes("вже маєте")||msg.toLowerCase().includes("вже існує")){try{await a.switchMode("employee");setError("");a.notice("Роль виконавця вже є; режим перемкнено")}catch(x){setError(errorText(x))}}else setError(msg);
               } finally {
                 setBusy(false);
               }
             }}
           >
-            <h3>Додати роль виконавця</h3>
+            <h3>Стати виконавцем</h3>
             <EmployeeFields services={a.services} regions={a.regions} />
             {error && <ErrorBox text={error} />}
             <button className="button primary" disabled={busy}>
-              Додати роль виконавця
+              Запросити роль виконавця
             </button>
           </form>
         )}
-        {canRequestRole("customer") && (
+        {!a.session?.user.roles.includes("customer") && (
           <button
             disabled={busy}
             className="button primary"
@@ -105,13 +82,14 @@ export function Profile() {
                 applySession(result.data);
                 a.notice("Роль замовника додано");
               } catch (e) {
-                a.notice(errorText(e));
+                const msg=errorText(e);
+                if(msg.toLowerCase().includes("already have")||msg.toLowerCase().includes("вже маєте")||msg.toLowerCase().includes("вже існує")){try{await a.switchMode("customer");a.notice("Роль замовника вже є; режим перемкнено")}catch(x){a.notice(errorText(x))}}else a.notice(msg);
               } finally {
                 setBusy(false);
               }
             }}
           >
-            Додати роль замовника
+            Запросити роль замовника
           </button>
         )}
         <button className="button secondary logout" onClick={() => a.logout()}>
