@@ -1,4 +1,4 @@
-import type { Contract, Option } from "./api";
+import type { Contract,Option } from "./api";
 export const services: Option[] = [
   { id: "11111111-1111-4111-8111-111111111111", name: "Догляд за могилою" },
   { id: "22222222-2222-4222-8222-222222222222", name: "Озеленення" },

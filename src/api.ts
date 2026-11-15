@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios,{ AxiosError,InternalAxiosRequestConfig } from "axios";
 export type Mode = "customer" | "employee";
 export interface Profile {
   id: string;
@@ -6,6 +6,7 @@ export interface Profile {
   name?: string;
   rating?: number;
   reviewsCount?: number;
+  completedContracts?: number;
   user?: { name: string };
 }
 export interface User {
@@ -14,6 +15,7 @@ export interface User {
   name: string;
   roles: Mode[];
   mode: Mode;
+  rolesComplete?: boolean;
   employeeProfile?: Profile;
 }
 export interface AuthResponse {
@@ -120,6 +122,11 @@ const auth = axios.create({
   withCredentials: true,
 });
 let token: string | null = null;
+let remembered: Session | null = null;
+const unavailableRoles=new Set<Mode>();
+export const canRequestRole=(role:Mode)=>!!remembered && !remembered.user.roles.includes(role) && (remembered.user.rolesComplete===true || unavailableRoles.has(role));
+export function rememberIdentity(name:string,email:string){if(remembered){remembered={...remembered,user:{...remembered.user,name,email}};applySession(remembered)}}
+
 let refreshPromise: Promise<Session> | null = null;
 let sessionListener: (s: Session | null) => void = () => {};
 export const listenSession = (fn: typeof sessionListener) => {
@@ -130,6 +137,8 @@ export const listenSession = (fn: typeof sessionListener) => {
 };
 export function applySession(s: Session | null) {
   token = s?.accessToken ?? null;
+  remembered = s;
+  if(!s)unavailableRoles.clear();
   sessionListener(s);
 }
 function normalizeUrl(url?: string) {
@@ -137,9 +146,6 @@ function normalizeUrl(url?: string) {
   const trimmed = url.split("?")[0];
   if (/^https?:\/\//i.test(trimmed)) return new URL(trimmed).pathname;
   return trimmed;
-}
-function isMode(value: unknown): value is Mode {
-  return value === "customer" || value === "employee";
 }
 export async function hydrateSession(response: AuthResponse): Promise<Session> {
   const part = response.accessToken?.split(".")[1];
@@ -151,25 +157,23 @@ export async function hydrateSession(response: AuthResponse): Promise<Session> {
     !payload ||
     typeof payload !== "object" ||
     !("sub" in payload) ||
-    typeof payload.sub !== "string"
+    typeof payload.sub !== "string" ||
+    !("role" in payload) ||
+    (payload.role !== "customer" && payload.role !== "employee")
   )
     throw new Error("Некоректна сесія");
-  const { data: user } = await api.get<CurrentUserResponse>("/auth/me", {
-    headers: { Authorization: `Bearer ${response.accessToken}` },
-  });
-  const roles = Array.isArray(user?.roles) ? user.roles.filter(isMode) : [];
-  if (
-    user.id !== payload.sub ||
-    typeof user.email !== "string" ||
-    typeof user.name !== "string" ||
-    !isMode(user.mode) ||
-    !roles.includes(user.mode)
-  )
-    throw new Error("Некоректна відповідь профілю користувача");
+  const identity = remembered?.user.id === payload.sub ? remembered.user : null;
   return {
     accessToken: response.accessToken,
-    user: { ...user, roles },
-    mode: user.mode,
+    user: {
+      id: payload.sub,
+      email: identity?.email ?? "",
+      name: identity?.name ?? "Користувач",
+      mode: payload.role,
+      roles: Array.from(new Set<Mode>([...(identity?.roles ?? []), payload.role])),
+      rolesComplete: identity?.rolesComplete ?? false,
+    },
+    mode: payload.role,
   };
 }
 export function refresh() {
@@ -198,11 +202,25 @@ function publicPath(url = "") {
   const path = normalizeUrl(url);
   return (
     /^(\/services|\/regions)(\/|$)/.test(path) ||
-    /^\/auth\/(login|me|register|refresh|verify-email|resend-verification)(\/|$)/.test(
+    /^\/auth\/(login|me|register|refresh|verify-email|resend-verification|forgot-password|reset-password)(\/|$)/.test(
       path,
     )
   );
 }
+type MessageResponse = { message: string };
+export const authApi = {
+  verifyEmail: (token: string) =>
+    api.post<MessageResponse>("/auth/verify-email", { token }),
+  resendVerification: (email: string) =>
+    api.post<MessageResponse>("/auth/resend-verification", { email }),
+  forgotPassword: (email: string) =>
+    api.post<MessageResponse>("/auth/forgot-password", { email }),
+  resetPassword: (token: string, password: string) =>
+    api.post<MessageResponse>("/auth/reset-password", {
+      token,
+      newPassword: password,
+    }),
+};
 api.interceptors.request.use((c) => {
   if (token && !publicPath(c.url)) c.headers.Authorization = `Bearer ${token}`;
   return c;
@@ -213,11 +231,15 @@ api.interceptors.response.use(
     if (
       /^\/auth\/(login|switch-mode|roles\/(customer|employee))$/.test(path)
     ) {
-      r.data = await hydrateSession(r.data as AuthResponse);
+      const next=await hydrateSession(r.data as AuthResponse);
+      if(r.config.url?.startsWith('/auth/roles/')){const role=r.config.url.endsWith('/employee')?'employee':'customer';next.user.roles=Array.from(new Set([...next.user.roles,role]));}
+      r.data=next;
     }
     return r;
   },
   async (e: AxiosError) => {
+    if(e.response?.status===403 && e.config?.url==='/auth/switch-mode'){try{const input=JSON.parse(String(e.config.data)) as {mode:Mode};unavailableRoles.add(input.mode);sessionListener(remembered)}catch{/* No untrusted body propagation */}}
+
     const c = e.config as
       (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
     if (e.response?.status !== 401 || !c || c._retried || publicPath(c.url))
@@ -246,7 +268,7 @@ export function errorText(e: unknown) {
     const url = normalizeUrl(config?.url);
     const m = response.data?.message;
     if (status === 401 && /\/auth\/login(\/|$)/.test(url))
-      return "Невірний email або пароль.";
+      return "Невірний email/пароль";
     if ((status === 401 || status === 403) && /\/auth\/(refresh)(\/|$)/.test(url))
       return "Сесію завершено. Увійдіть знову.";
     if (status === 403 && /\/auth\/login(\/|$)/.test(url))

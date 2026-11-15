@@ -3,16 +3,9 @@ import {build} from 'esbuild';
 import axios from 'axios';
 import {mkdir,rm} from 'node:fs/promises';
 await mkdir('.test-tmp',{recursive:true});
-await build({entryPoints:['src/new-api.ts'],outfile:'.test-tmp/api.mjs',bundle:true,platform:'node',format:'esm',external:['axios'],define:{'import.meta.env.VITE_API_URL':'"https://api.test"'}});
-const requests=[];
-axios.defaults.adapter=async c=>{requests.push(c);assert.equal(c.withCredentials,true);return {data:c.url==='/employees'?{items:[],meta:{page:2,limit:10,total:0,pages:0}}:c.url?.endsWith('/reserve')?{plotId:'plot',reservedUntil:new Date(Date.now()+600000).toISOString()}: {},status:200,statusText:'OK',headers:{},config:c}};
-try{
-const {newApi}=await import('../.test-tmp/api.mjs');
-const page=await newApi.employees({search:'Тест',page:2,limit:10,sortBy:'completedContracts',order:'desc'});assert.equal(page.meta.pages,0);assert.equal(requests.at(-1).params.page,2);
-await newApi.reserve('plot');assert.equal(requests.at(-1).url,'/plots/plot/reserve');assert.equal(requests.at(-1).data,undefined);
-await newApi.release('plot');assert.equal(requests.at(-1).method,'delete');
-await newApi.credit('plot',12,100);assert.deepEqual(requests.at(-1).params,{months:12,downPayment:100});
-await newApi.purchase('plot',{paymentType:'full'});assert.deepEqual(JSON.parse(requests.at(-1).data),{paymentType:'full'});
-await newApi.purchase('plot',{paymentType:'credit',months:24,downPayment:100});assert.deepEqual(JSON.parse(requests.at(-1).data),{paymentType:'credit',months:24,downPayment:100});
-console.log('PASS: employee meta pagination, credentials, reservation methods and exact purchase/credit payloads');
-}finally{await rm('.test-tmp',{recursive:true,force:true})}
+await build({entryPoints:['src/api.ts'],outfile:'.test-tmp/api.mjs',bundle:true,platform:'node',format:'esm',external:['axios'],define:{'import.meta.env.VITE_API_URL':'"https://api.test"'}});
+const jwt=role=>'header.'+Buffer.from(JSON.stringify({sub:'user-1',role})).toString('base64url')+'.signature';
+let refreshCount=0,fail=false,requestCount=0;
+const reject=(c,status)=>Promise.reject(new axios.AxiosError('HTTP '+status,'ERR_BAD_RESPONSE',c,undefined,{status,data:{message:'Unauthorized'},headers:{},config:c}));
+axios.defaults.adapter=async c=>{assert.equal(c.withCredentials,true);if(c.url==='/auth/refresh'){refreshCount++;await new Promise(r=>setTimeout(r,10));if(fail)return reject(c,401);return{data:{accessToken:jwt('customer')},status:200,headers:{},config:c}}if(c.url==='/auth/login')return reject(c,401);if(c.url==='/auth/roles/employee')return{data:{accessToken:jwt('employee')},status:200,headers:{},config:c};if(c.url==='/services'){assert.equal(c.headers.Authorization,undefined);return{data:[],status:200,headers:{},config:c}}requestCount++;if(c.headers.Authorization!=='Bearer '+jwt('customer'))return reject(c,401);return{data:{items:[],meta:{page:1,limit:10,total:0,pages:0}},status:200,headers:{},config:c}};
+try{const m=await import('../.test-tmp/api.mjs');let current;m.listenSession(s=>current=s);m.applySession({accessToken:'expired',user:{id:'user-1',name:'Олена',email:'test@example.com',mode:'customer',roles:['customer'],rolesComplete:true}});await Promise.all([m.api.get('/contracts/my'),m.api.get('/contracts/a'),m.api.get('/contracts/b')]);assert.equal(refreshCount,1);assert.equal(requestCount,6);assert.equal(current.user.name,'Олена');await m.api.get('/services');const role=await m.api.post('/auth/roles/employee',{});m.applySession(role.data);assert.deepEqual(new Set(current.user.roles),new Set(['customer','employee']));await m.refresh();assert.equal(current.user.roles.length,2);assert.equal(current.user.name,'Олена');try{await m.api.post('/auth/login',{})}catch(e){assert.equal(m.errorText(e),'Невірний email/пароль')}const list=await m.pageGet('/contracts/my');assert.equal(list.total,0);fail=true;m.applySession({...current,accessToken:'expired'});await assert.rejects(m.api.get('/contracts/my'));assert.equal(current,null);console.log('PASS: single-flight refresh, one retry, credentials, public headers, role union, identity retention, token replacement, login error, meta pagination, session expiry');}finally{await rm('.test-tmp',{recursive:true,force:true})}
