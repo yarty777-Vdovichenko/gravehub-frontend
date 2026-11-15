@@ -17,6 +17,7 @@ import {
   useNavigate,
   useParams,
   useLocation,
+  useSearchParams,
 } from "react-router-dom";
 import {
   Leaf,
@@ -53,6 +54,7 @@ import {
   applySession,
   refresh,
   errorText,
+  isEmailVerificationError,
   pageGet,
 } from "./api";
 import type {
@@ -65,6 +67,7 @@ import type {
   ContractInput,
   EmployeeInput,
   RegisterInput,
+  RegisterResponse,
 } from "./api";
 import * as demoData from "./demo";
 import "./style.css";
@@ -164,8 +167,6 @@ function App() {
     () =>
       listenSession((s) => {
         setSession(s);
-        if (!s && configured && !window.location.pathname.includes("login"))
-          window.history.replaceState(null, "", "/login");
       }),
     [],
   );
@@ -243,6 +244,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Auth />} />
           <Route path="/register" element={<Auth register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route element={<Guard />}>
             <Route
               path="/"
@@ -1968,12 +1970,37 @@ function Auth({ register = false }: { register?: boolean }) {
     nav = useNavigate(),
     [role, setRole] = useState<Mode>("customer"),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [success, setSuccess] = useState(""),
+    [email, setEmail] = useState(""),
+    [canResendVerification, setCanResendVerification] = useState(false),
+    [resending, setResending] = useState(false),
+    [resendMessage, setResendMessage] = useState("");
   const location = useLocation();
   useEffect(() => {
     setError("");
+    setSuccess("");
+    setCanResendVerification(false);
+    setResendMessage("");
   }, [location.pathname]);
   if (a.session && configured && !a.demo) return <Navigate to="/" replace />;
+  async function resendVerification() {
+    setResending(true);
+    setResendMessage("");
+    try {
+      const r = await api.post<RegisterResponse>(
+        "/auth/resend-verification",
+        { email: email.trim() },
+      );
+      setResendMessage(
+        `${r.data.message}. Перевірте папки «Вхідні» та «Спам».`,
+      );
+    } catch (e) {
+      setResendMessage(errorText(e));
+    } finally {
+      setResending(false);
+    }
+  }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!configured) {
@@ -1984,35 +2011,40 @@ function Auth({ register = false }: { register?: boolean }) {
     }
     setBusy(true);
     setError("");
+    setSuccess("");
+    setCanResendVerification(false);
+    setResendMessage("");
     const f = new FormData(e.currentTarget);
     try {
-      let body: RegisterInput | { email: string; password: string } = {
-        email: String(f.get("email")),
-        password: String(f.get("password")),
-      };
+      const email = String(f.get("email")).trim();
+      setEmail(email);
+      const password = String(f.get("password"));
       if (register) {
-        body = {
-          ...body,
+        const body: RegisterInput = {
+          email,
+          password,
           name: String(f.get("name")),
           role,
           ...(role === "employee" ? { employeeProfile: employeeInput(f) } : {}),
         };
         if (
           role === "employee" &&
-          (!(body as RegisterInput).employeeProfile?.regionIds.length ||
-            !(body as RegisterInput).employeeProfile?.specializationIds.length)
+          (!body.employeeProfile?.regionIds.length ||
+            !body.employeeProfile?.specializationIds.length)
         )
           throw new Error("Оберіть регіон та спеціалізацію.");
+        const r = await api.post<RegisterResponse>("/auth/register", body);
+        setSuccess(r.data.message);
+        return;
       }
-      const r = await api.post<Session>(
-        register ? "/auth/register" : "/auth/login",
-        body,
-      );
-      if (r.data.accessToken) applySession(r.data);
-      else await refresh();
+      const r = await api.post<Session>("/auth/login", { email, password });
+      applySession(r.data);
       nav("/");
     } catch (e) {
       setError(errorText(e));
+      setCanResendVerification(
+        !register && isEmailVerificationError(e),
+      );
     } finally {
       setBusy(false);
     }
@@ -2055,61 +2087,94 @@ function Auth({ register = false }: { register?: boolean }) {
               ? "Почніть з кількох простих кроків."
               : "Увійдіть, щоб продовжити піклуватися."}
           </p>
-          <form onSubmit={submit}>
-            {register && (
-              <>
-                <Field label="Ваше ім’я">
-                  <input
-                    required
-                    name="name"
-                    autoComplete="name"
-                    placeholder="Андрій Коваль"
-                  />
-                </Field>
-                <Field label="Я хочу">
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as Mode)}
+          {success ? (
+            <div className="auth-success" role="status">
+              <p>{success}</p>
+              <p>Перевірте пошту та підтвердіть адресу перед входом.</p>
+              <Link className="button primary" to="/login">
+                Перейти до входу
+              </Link>
+            </div>
+          ) : (
+            <form onSubmit={submit}>
+              {register && (
+                <>
+                  <Field label="Ваше ім’я">
+                    <input
+                      required
+                      name="name"
+                      autoComplete="name"
+                      placeholder="Андрій Коваль"
+                    />
+                  </Field>
+                  <Field label="Я хочу">
+                    <select
+                      value={role}
+                      onChange={(e) => setRole(e.target.value as Mode)}
+                    >
+                      <option value="customer">Замовляти послуги</option>
+                      <option value="employee">Надавати послуги</option>
+                    </select>
+                  </Field>
+                </>
+              )}
+              <Field label="Електронна пошта">
+                <input
+                  required
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setCanResendVerification(false);
+                    setResendMessage("");
+                  }}
+                />
+              </Field>
+              <Field label="Пароль">
+                <input
+                  required
+                  name="password"
+                  type="password"
+                  minLength={register ? 6 : 8}
+                  maxLength={72}
+                  autoComplete={register ? "new-password" : "current-password"}
+                  placeholder="Введіть пароль"
+                />
+              </Field>
+              {register && role === "employee" && (
+                <EmployeeFields services={a.services} regions={a.regions} />
+              )}
+              {error && <ErrorBox text={error} />}
+              {canResendVerification && (
+                <div className="verification-resend">
+                  <p>
+                    Не отримали лист? Перевірте адресу електронної пошти та
+                    папку «Спам».
+                  </p>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={resending}
+                    onClick={resendVerification}
                   >
-                    <option value="customer">Замовляти послуги</option>
-                    <option value="employee">Надавати послуги</option>
-                  </select>
-                </Field>
-              </>
-            )}
-            <Field label="Електронна пошта">
-              <input
-                required
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-              />
-            </Field>
-            <Field label="Пароль">
-              <input
-                required
-                name="password"
-                type="password"
-                minLength={register ? 6 : 1}
-                maxLength={72}
-                autoComplete={register ? "new-password" : "current-password"}
-                placeholder="Введіть пароль"
-              />
-            </Field>
-            {register && role === "employee" && (
-              <EmployeeFields services={a.services} regions={a.regions} />
-            )}
-            {error && <ErrorBox text={error} />}
-            <button className="button primary" disabled={busy}>
-              {busy
-                ? "Зачекайте…"
-                : register
-                  ? "Зареєструватися"
-                  : "Увійти в кабінет"}
-              <ArrowRight size={17} />
-            </button>
-          </form>
+                    {resending ? "Надсилаємо…" : "Надіслати лист повторно"}
+                  </button>
+                  {resendMessage && <p role="status">{resendMessage}</p>}
+                </div>
+              )}
+              <button className="button primary" disabled={busy}>
+                {busy
+                  ? "Зачекайте…"
+                  : register
+                    ? "Зареєструватися"
+                    : "Увійти в кабінет"}
+                <ArrowRight size={17} />
+              </button>
+            </form>
+          )}
           <p className="auth-link">
             {register
               ? "Вже маєте обліковий запис?"
@@ -2139,6 +2204,66 @@ function Auth({ register = false }: { register?: boolean }) {
         <small className="auth-footer">
           З турботою про тих, кого пам’ятаємо.
         </small>
+      </section>
+    </div>
+  );
+}
+function VerifyEmail() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
+  const [result, setResult] = useState<{
+    status: "pending" | "success" | "error";
+    message: string;
+  }>({ status: "pending", message: "Підтверджуємо електронну пошту…" });
+  useEffect(() => {
+    let active = true;
+    if (!token) {
+      setResult({
+        status: "error",
+        message: "У посиланні немає токена підтвердження.",
+      });
+    } else if (!configured) {
+      setResult({
+        status: "error",
+        message: "Для підтвердження пошти потрібне підключення до API.",
+      });
+    } else {
+      api
+        .post("/auth/verify-email", { token })
+        .then(() => {
+          if (active)
+            setResult({
+              status: "success",
+              message: "Електронну пошту підтверджено. Тепер можна увійти.",
+            });
+        })
+        .catch((e) => {
+          if (active)
+            setResult({ status: "error", message: errorText(e) });
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [token]);
+  return (
+    <div className="auth-page auth-page-single">
+      <section className="auth-form-area">
+        <div className="auth-form">
+          <span className="eyebrow">ВАШ ПРОСТІР ТУРБОТИ</span>
+          <h1>Підтвердження пошти</h1>
+          <div
+            className={result.status === "success" ? "auth-success" : "error"}
+            role={result.status === "error" ? "alert" : "status"}
+          >
+            {result.message}
+          </div>
+          {result.status !== "pending" && (
+            <Link className="button primary" to="/login">
+              Перейти до входу
+            </Link>
+          )}
+        </div>
       </section>
     </div>
   );
