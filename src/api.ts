@@ -21,6 +21,16 @@ export interface User {
 export interface AuthResponse {
   accessToken: string;
 }
+export interface CurrentUserResponse {
+  id: string;
+  email: string;
+  name: string;
+  roles: Mode[];
+  mode: Mode;
+}
+export interface RegisterResponse {
+  message: string;
+}
 export interface Session {
   accessToken: string;
   user: User;
@@ -131,8 +141,14 @@ export function applySession(s: Session | null) {
   if(!s)unavailableRoles.clear();
   sessionListener(s);
 }
+function normalizeUrl(url?: string) {
+  if (!url) return "";
+  const trimmed = url.split("?")[0];
+  if (/^https?:\/\//i.test(trimmed)) return new URL(trimmed).pathname;
+  return trimmed;
+}
 export async function hydrateSession(response: AuthResponse): Promise<Session> {
-  const part = response.accessToken.split(".")[1];
+  const part = response.accessToken?.split(".")[1];
   if (!part) throw new Error("Некоректний access token");
   const payload: unknown = JSON.parse(
     atob(part.replace(/-/g, "+").replace(/_/g, "/")),
@@ -146,16 +162,16 @@ export async function hydrateSession(response: AuthResponse): Promise<Session> {
     (payload.role !== "customer" && payload.role !== "employee")
   )
     throw new Error("Некоректна сесія");
-  // Claims guide the UI only; server guards enforce all access.
+  const identity = remembered?.user.id === payload.sub ? remembered.user : null;
   return {
     accessToken: response.accessToken,
     user: {
       id: payload.sub,
-      email: remembered?.user.id===payload.sub ? remembered.user.email : "",
-      name: remembered?.user.id===payload.sub ? remembered.user.name : "Користувач",
+      email: identity?.email ?? "",
+      name: identity?.name ?? "Користувач",
       mode: payload.role,
-      roles: Array.from(new Set<Mode>([...(remembered?.user.id===payload.sub?remembered.user.roles:[]),payload.role])),
-      rolesComplete: remembered?.user.id===payload.sub ? remembered.user.rolesComplete : false,
+      roles: Array.from(new Set<Mode>([...(identity?.roles ?? []), payload.role])),
+      rolesComplete: identity?.rolesComplete ?? false,
     },
     mode: payload.role,
   };
@@ -183,21 +199,37 @@ export function refresh() {
   return refreshPromise;
 }
 function publicPath(url = "") {
+  const path = normalizeUrl(url);
   return (
-    /^\/(services|regions)(\?|$)/.test(url) ||
-    /^\/auth\/(login|register|refresh)$/.test(url)
+    /^(\/services|\/regions)(\/|$)/.test(path) ||
+    /^\/auth\/(login|me|register|refresh|verify-email|resend-verification|forgot-password|reset-password)(\/|$)/.test(
+      path,
+    )
   );
 }
+type MessageResponse = { message: string };
+export const authApi = {
+  verifyEmail: (token: string) =>
+    api.post<MessageResponse>("/auth/verify-email", { token }),
+  resendVerification: (email: string) =>
+    api.post<MessageResponse>("/auth/resend-verification", { email }),
+  forgotPassword: (email: string) =>
+    api.post<MessageResponse>("/auth/forgot-password", { email }),
+  resetPassword: (token: string, password: string) =>
+    api.post<MessageResponse>("/auth/reset-password", {
+      token,
+      newPassword: password,
+    }),
+};
 api.interceptors.request.use((c) => {
   if (token && !publicPath(c.url)) c.headers.Authorization = `Bearer ${token}`;
   return c;
 });
 api.interceptors.response.use(
   async (r) => {
+    const path = normalizeUrl(r.config.url);
     if (
-      /^\/auth\/(login|switch-mode|roles\/(customer|employee))$/.test(
-        r.config.url ?? "",
-      )
+      /^\/auth\/(login|switch-mode|roles\/(customer|employee))$/.test(path)
     ) {
       const next=await hydrateSession(r.data as AuthResponse);
       if(r.config.url?.startsWith('/auth/roles/')){const role=r.config.url.endsWith('/employee')?'employee':'customer';next.user.roles=Array.from(new Set([...next.user.roles,role]));}
@@ -223,17 +255,51 @@ api.interceptors.response.use(
   },
 );
 export function errorText(e: unknown) {
-  if (axios.isAxiosError<ApiError>(e)) {
-    const status = e.response?.status;
-    if(status===401 && e.config?.url==="/auth/login") return "Невірний email або пароль";
-    if (status === 401) return "Сесію завершено. Увійдіть знову.";
-    const m = e.response?.data?.message;
-    if (status === 404 && typeof m === 'string' && /^Cannot (GET|POST|DELETE) \/(cemeteries|plots)/.test(m))
-      return 'Цей маршрут кладовищ або місць наразі недоступний на сервері. Решта розділів сайту може працювати; перевірте адресу API або зверніться до розробника бекенду.';
+  const response =
+    typeof e === "object" && e !== null && "response" in e
+      ? (e as { response?: { status?: number; data?: { message?: string | string[] } } }).response
+      : undefined;
+  const config =
+    typeof e === "object" && e !== null && "config" in e
+      ? (e as { config?: { url?: string } }).config
+      : undefined;
+  if (response && typeof response === "object") {
+    const status = response.status;
+    const url = normalizeUrl(config?.url);
+    const m = response.data?.message;
+    if (status === 401 && /\/auth\/login(\/|$)/.test(url))
+      return "Невірний email/пароль";
+    if ((status === 401 || status === 403) && /\/auth\/(refresh)(\/|$)/.test(url))
+      return "Сесію завершено. Увійдіть знову.";
+    if (status === 403 && /\/auth\/login(\/|$)/.test(url))
+      return m
+        ? Array.isArray(m)
+          ? m.join(" • ")
+          : m
+        : "Підтвердіть електронну пошту перед входом.";
+    if (status === 403) return "Ця дія недоступна у вашому поточному режимі.";
+    if (status === 401)
+      return "Неавторизовано. Увійдіть знову.";
+    if (status === 404 && typeof m === "string" && /^Cannot (GET|POST|DELETE) \/(cemeteries|plots)/.test(m))
+      return "Цей маршрут кладовищ або місць наразі недоступний на сервері. Решта розділів сайту може працювати; перевірте адресу API або зверніться до розробника бекенду.";
     if (m) return Array.isArray(m) ? m.join(" • ") : m;
     return "Не вдалося зв’язатися із сервером. Спробуйте ще раз.";
   }
   return e instanceof Error ? e.message : "Сталася помилка. Спробуйте ще раз.";
+}
+export function isEmailVerificationError(e: unknown) {
+  const response =
+    typeof e === "object" && e !== null && "response" in e
+      ? (e as { response?: { status?: number } }).response
+      : undefined;
+  const config =
+    typeof e === "object" && e !== null && "config" in e
+      ? (e as { config?: { url?: string } }).config
+      : undefined;
+  return (
+    response?.status === 403 &&
+    normalizeUrl(config?.url) === "/auth/login"
+  );
 }
 export async function pageGet<T>(
   url: string,

@@ -43,9 +43,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           { to: "/proposals", icon: Send, text: "Мої пропозиції" },
         ]
       : []),
-    
+
     { to: "/employees", icon: Search, text: "Знайти виконавця" },
-    
+
     { to: "/services", icon: Flower2, text: "Послуги" },
     { to: "/profile", icon: UserRound, text: "Мій профіль" },
   ];

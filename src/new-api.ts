@@ -56,6 +56,25 @@ export interface Purchase {
   downPayment: number | null;
   monthlyPayment: number | null;
 }
+const plotsUnavailable = () =>
+  Promise.reject(
+    new Error("API місць не підтверджений документацією. Розділ недоступний."),
+  );
+export const plotsApi = {
+  creditPreview: (
+    _plotId: string,
+    _months: Credit["months"],
+    _downPayment: number,
+  ): Promise<Credit> => plotsUnavailable(),
+  reserve: (_plotId: string): Promise<Reservation> => plotsUnavailable(),
+  release: (_plotId: string): Promise<void> => plotsUnavailable(),
+  purchase: (
+    _plotId: string,
+    _input:
+      | { paymentType: "full" }
+      | { paymentType: "credit"; months: Credit["months"]; downPayment: number },
+  ): Promise<Purchase> => plotsUnavailable(),
+};
 export interface SearchFilters {
   search?: string;
   regionId?: string;

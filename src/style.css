@@ -157,6 +157,14 @@ a.button:hover {
   color: #8b948e;
   font-weight: 650;
 }
+.mode-switch .add-role-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  color: #356046;
+}
 .mode-switch .selected {
   background: white;
   color: #356046;
@@ -1231,6 +1239,9 @@ legend {
   grid-template-columns: 46% 54%;
   min-height: 100vh;
 }
+.auth-page-single {
+  grid-template-columns: 1fr;
+}
 .auth-story {
   background: #eaf0e2;
   padding: 45px 60px;
@@ -1315,6 +1326,37 @@ legend {
 .auth-form > p {
   font-size: 12px;
   margin: 12px 0 30px;
+}
+.auth-success {
+  margin: 15px 0;
+  background: #f0f7ed;
+  border: 1px solid #dce9d5;
+  border-radius: 7px;
+  padding: 15px;
+  color: #527447;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.auth-success p {
+  color: inherit;
+}
+.auth-success .button {
+  margin-top: 15px;
+}
+.verification-resend {
+  margin: 15px 0;
+  padding: 14px;
+  background: #f8faf5;
+  border: 1px solid #e6ebe2;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.verification-resend p {
+  color: #71806f;
+}
+.verification-resend .button {
+  margin: 10px 0;
 }
 .auth-form .button {
   width: 100%;
