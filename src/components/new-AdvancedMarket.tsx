@@ -76,7 +76,7 @@ export function AdvancedMarket({
                   <div>
                     <h3>{c.title}</h3>
                     <p>
-                      {c.region?.name} · {c.serviceType?.name}
+                      {c.region?.name} · {(c.serviceTypes?.map((service) => service.name).join(", ") || c.serviceType?.name)}
                     </p>
                   </div>
                   <b>{cash(c.budget)}</b>

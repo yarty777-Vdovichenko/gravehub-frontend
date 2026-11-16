@@ -173,11 +173,25 @@ export function Auth({ register = false }: { register?: boolean }) {
               />
             </Field>
             {register && role === "employee" && (
-              <EmployeeFields services={a.services} regions={a.regions} />
+              <EmployeeFields
+                services={a.services}
+                regions={a.regions}
+                regionsLoading={a.regionsLoading}
+                regionsError={a.regionsError}
+                retryRegions={() => void a.reloadRegions()}
+              />
             )}
             {error && <ErrorBox text={error} />}
             {!register && <div className="auth-link"><Link to="/forgot-password">Забули пароль?</Link> · <button type="button" className="link-button" onClick={async()=>{setError("");try{await api.post("/auth/resend-verification",{email:emailValue});setError("Якщо акаунт існує і пошта не підтверджена, лист буде надіслано.")}catch(e){setError(errorText(e))}}}>Надіслати лист підтвердження повторно</button></div>}
-            <button className="button primary" disabled={busy}>
+            <button
+              className="button primary"
+              disabled={
+                busy ||
+                (register &&
+                  role === "employee" &&
+                  (a.regionsLoading || !!a.regionsError || a.regions.length === 0))
+              }
+            >
               {busy
                 ? "Зачекайте…"
                 : register

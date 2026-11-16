@@ -214,9 +214,11 @@ export function Details() {
             <div className="detail-meta">
               <span>
                 <Flower2 size={18} />
-                {c.serviceType?.name ??
-                  a.services.find((s) => s.id === c.serviceTypeId)?.name ??
-                  "Послуга"}
+                {c.serviceTypes?.length
+                  ? c.serviceTypes.map((service) => service.name).join(", ")
+                  : c.serviceType?.name ??
+                    a.services.find((s) => s.id === c.serviceTypeId)?.name ??
+                    "Послуга"}
               </span>
               <span>
                 <MapPin size={18} />

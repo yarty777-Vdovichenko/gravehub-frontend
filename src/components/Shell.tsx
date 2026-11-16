@@ -9,6 +9,7 @@ Leaf,
 LogOut,
 MapPin,
 Menu,
+MessageCircle,
 Search,
 Send,
 ShieldCheck,
@@ -27,6 +28,7 @@ errorText
 } from "../api";
 import "../style.css";
 import { useApp } from './useApp';
+import { NotificationBell } from "./NotificationBell";
 export function Shell({ children }: { children: React.ReactNode }) {
   const a = useApp(),
     [mobile, setMobile] = useState(false),
@@ -54,6 +56,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         ]
       : []),
     { to: "/services", icon: Flower2, text: "Послуги" },
+    { to: "/messages", icon: MessageCircle, text: "Повідомлення" },
     { to: "/profile", icon: UserRound, text: "Мій профіль" },
   ];
   return (
@@ -161,6 +164,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
           <div className="header-right">
+            <NotificationBell />
             <span className="secure">
               <ShieldCheck size={15} /> Простір довіри
             </span>

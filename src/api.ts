@@ -53,7 +53,8 @@ export interface Contract {
   id: string;
   title: string;
   description: string;
-  serviceTypeId: string;
+  serviceTypeId?: string;
+  serviceTypes?: Option[];
   regionId: string;
   positionX: number;
   positionY: number;
@@ -99,12 +100,38 @@ export interface RegisterInput {
 export interface ContractInput {
   title: string;
   description: string;
-  serviceTypeId: string;
+  serviceTypeIds: string[];
   regionId: string;
   positionX: number;
   positionY: number;
   date: string;
   budget: number;
+}
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  text: string;
+  createdAt: string;
+  sender: { id: string; name: string };
+}
+export interface Conversation {
+  id: string;
+  createdAt: string;
+  lastMessageAt: string;
+  participant: { id: string; name: string };
+  lastMessage: ChatMessage | null;
+}
+export interface NotificationItem {
+  id: string;
+  type:
+    | "proposal_received"
+    | "proposal_accepted"
+    | "proposal_rejected"
+    | "contract_status_changed";
+  payload: Record<string, unknown>;
+  readAt: string | null;
+  createdAt: string;
 }
 export interface ApiError {
   statusCode: number;

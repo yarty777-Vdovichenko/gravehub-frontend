@@ -8,6 +8,14 @@ export interface Employee {
   rating: number;
   reviewsCount?:number;
   completedContracts: number;
+  description?: string;
+  portfolio?: {
+    id: string;
+    url: string;
+    type: "image" | "video";
+    caption?: string | null;
+    createdAt: string;
+  }[];
   user: { id: string; name: string };
   regions: { id: string; name: string }[];
   specialization: { id: string; name: string }[];
@@ -100,7 +108,7 @@ export interface SearchFilters {
   limit: number;
 }
 const profiles=new Map<string,Employee>();
-function normalize(raw:unknown):Employee{if(!raw||typeof raw!=='object'||!('id'in raw)||typeof raw.id!=='string')throw new Error('Некоректні дані виконавця');const r=raw as Record<string,unknown>;const list=(value:unknown):{id:string;name:string}[]=>Array.isArray(value)?value.filter((v):v is {id:string;name:string}=>!!v&&typeof v==='object'&&typeof v.id==='string'&&typeof v.name==='string'):[];const u=r.user as Record<string,unknown>|undefined;return {id:raw.id,rating:typeof r.rating==='number'?r.rating:0,reviewsCount:typeof r.reviewsCount==='number'?r.reviewsCount:undefined,completedContracts:typeof r.completedContracts==='number'?r.completedContracts:0,user:{id:typeof u?.id==='string'?u.id:'',name:typeof u?.name==='string'?u.name:'Виконавець'},regions:list(r.regions),specialization:list(r.specialization??r.specializations??r.services)}}
+function normalize(raw:unknown):Employee{if(!raw||typeof raw!=='object'||!('id'in raw)||typeof raw.id!=='string')throw new Error('Некоректні дані виконавця');const r=raw as Record<string,unknown>;const list=(value:unknown):{id:string;name:string}[]=>Array.isArray(value)?value.filter((v):v is {id:string;name:string}=>!!v&&typeof v==='object'&&typeof v.id==='string'&&typeof v.name==='string'):[];const u=r.user as Record<string,unknown>|undefined;const portfolio=Array.isArray(r.portfolio)?r.portfolio.filter((item):item is NonNullable<Employee["portfolio"]>[number]=>!!item&&typeof item==="object"&&"id"in item&&typeof item.id==="string"&&"url"in item&&typeof item.url==="string"&&"type"in item&&(item.type==="image"||item.type==="video")):undefined;return {id:raw.id,rating:typeof r.rating==='number'?r.rating:0,reviewsCount:typeof r.reviewsCount==='number'?r.reviewsCount:undefined,completedContracts:typeof r.completedContracts==='number'?r.completedContracts:0,description:typeof r.description==="string"?r.description:undefined,portfolio,user:{id:typeof u?.id==='string'?u.id:'',name:typeof u?.name==='string'?u.name:'Виконавець'},regions:list(r.regions),specialization:list(r.specialization??r.specializations??r.services)}}
 export const newApi = {
   employees: async (params: SearchFilters, signal?: AbortSignal) => {
     const { data } = await api.get<MetaPage<unknown>>("/employees", {
@@ -112,11 +120,9 @@ export const newApi = {
     return { ...data, items };
   },
   employee: async (id: string) => {
-    const profile = profiles.get(id);
-    if (!profile)
-      throw new Error(
-        "Профіль недоступний після перезавантаження. Відкрийте його зі списку виконавців. Окремий endpoint профілю не використовується.",
-      );
+    const { data } = await api.get<unknown>(`/employees/${encodeURIComponent(id)}`);
+    const profile = normalize(data);
+    profiles.set(profile.id, profile);
     return profile;
   },
   cemeteries: async () => {

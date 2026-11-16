@@ -4,6 +4,7 @@ ChevronLeft,
 MapPin
 } from "lucide-react";
 import React,{
+useEffect,
 useState
 } from "react";
 import {
@@ -31,7 +32,45 @@ export function NewContract() {
     location = useLocation(),
     nav = useNavigate(),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [selectedServices, setSelectedServices] = useState<string[]>(() => {
+      const service = new URLSearchParams(window.location.search).get("service");
+      return service ? [service] : [];
+    }),
+    [estimate, setEstimate] = useState<number>(),
+    [estimateError, setEstimateError] = useState(""),
+    [budget, setBudget] = useState("");
+  useEffect(() => {
+    if (!selectedServices.length) {
+      setEstimate(undefined);
+      setEstimateError("");
+      return;
+    }
+
+    if (a.demo) {
+      setEstimate(
+        a.services
+          .filter((service) => selectedServices.includes(service.id))
+          .reduce((total, service) => total + (service.price ?? 0), 0),
+      );
+      return;
+    }
+
+    const controller = new AbortController();
+    setEstimateError("");
+    api
+      .post<{ estimatedPrice: number }>("/contracts/estimate", {
+        serviceTypeIds: selectedServices,
+      }, { signal: controller.signal })
+      .then(({ data }) => setEstimate(data.estimatedPrice))
+      .catch((e: unknown) => {
+        if (!controller.signal.aborted) {
+          setEstimate(undefined);
+          setEstimateError(errorText(e));
+        }
+      });
+    return () => controller.abort();
+  }, [selectedServices, a.demo, a.services]);
   const selection = a.demo ? readPlotSelection(location.state) : null;
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -45,13 +84,21 @@ export function NewContract() {
     const body: ContractInput = {
       title: String(f.get("title")).trim(),
       description: String(f.get("description")).trim(),
-      serviceTypeId: String(f.get("serviceTypeId")),
+      serviceTypeIds: f.getAll("serviceTypeIds").map(String),
       regionId: String(f.get("regionId")),
       positionX: Number(f.get("positionX")),
       positionY: Number(f.get("positionY")),
       date: date.toISOString(),
       budget: Number(f.get("budget")),
     };
+    if (!body.serviceTypeIds.length) {
+      setError("Оберіть хоча б одну послугу.");
+      return;
+    }
+    if (!Number.isFinite(body.budget) || body.budget <= 0) {
+      setError("Вкажіть бюджет, більший за нуль.");
+      return;
+    }
     if(!Number.isInteger(body.positionX)||body.positionX<0||!Number.isInteger(body.positionY)||body.positionY<0){setError('Координати мають бути цілими числами ≥ 0');return;}
     setBusy(true);
     try {
@@ -61,7 +108,7 @@ export function NewContract() {
           id: demoUuid(),
           status: "open",
           region: a.regions.find((r) => r.id === body.regionId),
-          serviceType: a.services.find((s) => s.id === body.serviceTypeId),
+          serviceTypes: a.services.filter((s) => body.serviceTypeIds.includes(s.id)),
           proposalsCount: 0,
         };
         a.setContracts((cs) => [c, ...cs]);
@@ -127,23 +174,26 @@ export function NewContract() {
           />
         </Field>
         <div className="form-grid">
-          <Field label="Послуга">
+          <Field label="Послуги">
             <select
               required
-              name="serviceTypeId"
-              defaultValue={
-                new URLSearchParams(window.location.search).get("service") ?? ""
+              name="serviceTypeIds"
+              multiple
+              value={selectedServices}
+              onChange={(event) =>
+                setSelectedServices(
+                  Array.from(event.currentTarget.selectedOptions, (option) => option.value),
+                )
               }
+              size={Math.min(Math.max(a.services.length, 3), 6)}
             >
-              <option value="" disabled>
-                Оберіть послугу
-              </option>
               {a.services.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name}
+                  {s.name}{s.price !== undefined ? ` · ${s.price.toLocaleString("uk-UA")} ₴` : ""}
                 </option>
               ))}
             </select>
+            <small>Щоб обрати кілька послуг, утримуйте Ctrl (Windows) або ⌘ (Mac).</small>
           </Field>
           <Field label="Регіон">
             <select
@@ -206,9 +256,27 @@ export function NewContract() {
               min="0.01"
               step="0.01"
               required
+              value={budget}
+              onChange={(event) => setBudget(event.target.value)}
               placeholder="1200"
             />
           </Field>
+        </div>
+        <div className="estimate-box" aria-live="polite">
+          {estimate !== undefined && (
+            <>
+              <span>Орієнтовна вартість вибраних послуг</span>
+              <strong>{estimate.toLocaleString("uk-UA")} ₴</strong>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => setBudget(String(estimate))}
+              >
+                Встановити бюджет
+              </button>
+            </>
+          )}
+          {estimateError && <p className="error">{estimateError}</p>}
         </div>
         {error && <ErrorBox text={error} />}
         <div className="form-actions">

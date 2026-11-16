@@ -13,6 +13,7 @@ import { employeeInput } from './employeeInput';
 import { ErrorBox } from './ErrorBox';
 import { PageTitle } from './PageTitle';
 import { useApp } from './useApp';
+import { EmployeeProfileEditor } from "./EmployeeProfileEditor";
 export function Profile() {
   const a = useApp(),
     [busy, setBusy] = useState(false),
@@ -43,6 +44,14 @@ export function Profile() {
             </span>
           ))}
         </div>
+        {a.session?.user.roles.includes("employee") && a.mode === "employee" && (
+          <EmployeeProfileEditor services={a.services} regions={a.regions} />
+        )}
+        {a.session?.user.roles.includes("employee") && a.mode !== "employee" && (
+          <p className="profile-mode-hint">
+            Щоб редагувати профіль виконавця, перемкніть режим на «Працівник».
+          </p>
+        )}
         {!a.session?.user.roles.includes("employee") && (
           <form
             onSubmit={async (e) => {
@@ -65,9 +74,18 @@ export function Profile() {
             }}
           >
             <h3>Стати виконавцем</h3>
-            <EmployeeFields services={a.services} regions={a.regions} />
+            <EmployeeFields
+              services={a.services}
+              regions={a.regions}
+              regionsLoading={a.regionsLoading}
+              regionsError={a.regionsError}
+              retryRegions={() => void a.reloadRegions()}
+            />
             {error && <ErrorBox text={error} />}
-            <button className="button primary" disabled={busy}>
+            <button
+              className="button primary"
+              disabled={busy || a.regionsLoading || !!a.regionsError || a.regions.length === 0}
+            >
               Запросити роль виконавця
             </button>
           </form>

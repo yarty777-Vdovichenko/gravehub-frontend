@@ -19,6 +19,9 @@ export type Ctx = {
   setContracts: React.Dispatch<React.SetStateAction<Contract[]>>;
   services: Option[];
   regions: Option[];
+  regionsLoading: boolean;
+  regionsError: string;
+  reloadRegions: () => Promise<void>;
   demoProposals: Proposal[];
   setDemoProposals: React.Dispatch<React.SetStateAction<Proposal[]>>;
   notice: (s: string) => void;

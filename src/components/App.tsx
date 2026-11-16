@@ -39,6 +39,7 @@ import { Dashboard } from './Dashboard';
 import { Details } from './Details';
 import { Guard } from './Guard';
 import { MapPage, MyPlotsPage } from './MapPage';
+import { Messages } from './Messages';
 import { NewContract } from './NewContract';
 import { Profile } from './Profile';
 import { Proposals } from './Proposals';
@@ -56,6 +57,8 @@ export function App() {
     [regions, setRegions] = useState<Option[]>(
       configured ? [] : demoData.regions,
     ),
+    [regionsLoading, setRegionsLoading] = useState(configured),
+    [regionsError, setRegionsError] = useState(""),
     [toast, setToast] = useState(""),
     [demoProposals, setDemoProposals] = useState<Proposal[]>([
       {
@@ -73,6 +76,38 @@ export function App() {
       },
     ]);
   useEffect(() => listenSession((s) => setSession(s)), []);
+  const reloadRegions = useCallback(async () => {
+    setRegionsLoading(true);
+    setRegionsError("");
+    try {
+      const { data } = await api.get<unknown>("/regions");
+      if (!Array.isArray(data)) {
+        throw new Error("Сервер повернув некоректний список регіонів.");
+      }
+      const validRegions = data.filter(
+        (region): region is Option =>
+          !!region &&
+          typeof region === "object" &&
+          "id" in region &&
+          typeof region.id === "string" &&
+          "name" in region &&
+          typeof region.name === "string",
+      );
+      if (validRegions.length !== data.length) {
+        throw new Error("Сервер повернув некоректні дані регіонів.");
+      }
+      setRegions(validRegions);
+      if (validRegions.length === 0) {
+        setRegionsError(
+          "Список регіонів порожній. Попросіть адміністратора заповнити регіони в базі даних.",
+        );
+      }
+    } catch (e) {
+      setRegionsError(errorText(e));
+    } finally {
+      setRegionsLoading(false);
+    }
+  }, []);
   useEffect(() => {
     if (configured) {
       refresh()
@@ -82,12 +117,9 @@ export function App() {
         .get<Option[]>("/services")
         .then((r) => setServices(r.data))
         .catch(() => {});
-      api
-        .get<Option[]>("/regions")
-        .then((r) => setRegions(r.data))
-        .catch(() => {});
+      void reloadRegions();
     }
-  }, []);
+  }, [reloadRegions]);
   const toastTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
   useEffect(()=>()=>clearTimeout(toastTimer.current),[]);
   const notice = useCallback((s: string) => {
@@ -143,6 +175,9 @@ export function App() {
         setContracts,
         services,
         regions,
+        regionsLoading,
+        regionsError,
+        reloadRegions,
         demoProposals,
         setDemoProposals,
         notice,
@@ -255,6 +290,14 @@ export function App() {
               element={
                 <Shell>
                   <Services />
+                </Shell>
+              }
+            />
+            <Route
+              path="/messages"
+              element={
+                <Shell>
+                  <Messages />
                 </Shell>
               }
             />

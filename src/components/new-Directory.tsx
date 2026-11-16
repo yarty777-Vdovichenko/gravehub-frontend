@@ -1,6 +1,6 @@
 import axios from "axios";
 import { useEffect,useState } from "react";
-import { Link,useParams } from "react-router-dom";
+import { Link,useNavigate,useParams } from "react-router-dom";
 import type { Option,Page,Review } from "../api";
 import { api,configured,errorText } from "../api";
 import type {
@@ -21,12 +21,14 @@ export function Directory({
   regions: Option[];
 }) {
   const { id } = useParams(),
+    navigate = useNavigate(),
     [profile, setProfile] = useState<Employee>(),
     [data, setData] = useState<MetaPage<Employee>>(),
     [reviews, setReviews] = useState<Page<Review>>(),
     [reviewPage, setReviewPage] = useState(1),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
+    [chatBusy, setChatBusy] = useState(false),
     [page, setPage] = useState(1),
     [limit, setLimit] = useState(10),
     [filters, setFilters] = useState<Omit<SearchFilters, "page" | "limit">>({
@@ -93,6 +95,44 @@ export function Directory({
           </p>
           <p>{profile.specialization.map((s) => s.name).join(", ")}</p>
           <p>{profile.regions.map((s) => s.name).join(", ")}</p>
+          {profile.description && <p className="employee-description">{profile.description}</p>}
+          <button
+            className="button primary"
+            disabled={chatBusy}
+            onClick={async () => {
+              setChatBusy(true);
+              try {
+                const { data: conversation } = await api.post<{ id: string }>(
+                  "/conversations",
+                  { employeeProfileId: profile.id },
+                );
+                navigate(`/messages?conversation=${encodeURIComponent(conversation.id)}`);
+              } catch (e) {
+                setError(errorText(e));
+              } finally {
+                setChatBusy(false);
+              }
+            }}
+          >
+            {chatBusy ? "Відкриваємо чат…" : "Написати виконавцю"}
+          </button>
+          {!!profile.portfolio?.length && (
+            <>
+              <h3 className="portfolio-heading">Портфоліо</h3>
+              <div className="portfolio-grid">
+                {profile.portfolio.map((media) => (
+                  <figure key={media.id}>
+                    {media.type === "video" ? (
+                      <video src={media.url} controls preload="metadata" />
+                    ) : (
+                      <img src={media.url} alt={media.caption ?? "Робота виконавця"} loading="lazy" />
+                    )}
+                    {media.caption && <figcaption>{media.caption}</figcaption>}
+                  </figure>
+                ))}
+              </div>
+            </>
+          )}
           <h3>Відгуки</h3>
           {reviews?.items.length ? (
             reviews.items.map((r) => (
