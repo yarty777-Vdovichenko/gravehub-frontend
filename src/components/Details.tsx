@@ -230,7 +230,11 @@ export function Details() {
                 {new Date(c.date).toLocaleString("uk-UA")}
               </span>
               <span>
-                Координати: {c.positionX}, {c.positionY}
+                {c.locationType === "address"
+                  ? `Адреса: ${c.address}`
+                  : c.locationType === "burial_plot"
+                    ? `Місце на кладовищі${c.burialPlotId ? ` · ${c.burialPlotId.slice(0, 8)}` : ""}`
+                    : `Координати: ${c.positionX ?? "—"}, ${c.positionY ?? "—"}`}
               </span>
             </div>
             {c.review && (

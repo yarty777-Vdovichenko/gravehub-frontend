@@ -33,6 +33,10 @@ export function NewContract() {
     nav = useNavigate(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
+    [locationType, setLocationType] = useState<"coordinates" | "burial_plot" | "address">(
+      () => readPlotSelection(location.state) ? "burial_plot" : "coordinates",
+    ),
+    [address, setAddress] = useState(""),
     [selectedServices, setSelectedServices] = useState<string[]>(() => {
       const service = new URLSearchParams(window.location.search).get("service");
       return service ? [service] : [];
@@ -86,11 +90,30 @@ export function NewContract() {
       description: String(f.get("description")).trim(),
       serviceTypeIds: f.getAll("serviceTypeIds").map(String),
       regionId: String(f.get("regionId")),
-      positionX: Number(f.get("positionX")),
-      positionY: Number(f.get("positionY")),
+      locationType,
       date: date.toISOString(),
       budget: Number(f.get("budget")),
     };
+    if (locationType === "coordinates") {
+      body.positionX = Number(f.get("positionX"));
+      body.positionY = Number(f.get("positionY"));
+      if (!Number.isInteger(body.positionX) || body.positionX < 0 || !Number.isInteger(body.positionY) || body.positionY < 0) {
+        setError("Координати мають бути цілими числами ≥ 0");
+        return;
+      }
+    } else if (locationType === "burial_plot") {
+      if (!selection) {
+        setError("Оберіть місце на карті кладовища.");
+        return;
+      }
+      body.burialPlotId = selection.id;
+    } else {
+      body.address = address.trim();
+      if (!body.address) {
+        setError("Вкажіть адресу виконання робіт.");
+        return;
+      }
+    }
     if (!body.serviceTypeIds.length) {
       setError("Оберіть хоча б одну послугу.");
       return;
@@ -99,7 +122,6 @@ export function NewContract() {
       setError("Вкажіть бюджет, більший за нуль.");
       return;
     }
-    if(!Number.isInteger(body.positionX)||body.positionX<0||!Number.isInteger(body.positionY)||body.positionY<0){setError('Координати мають бути цілими числами ≥ 0');return;}
     setBusy(true);
     try {
       if (a.demo) {
@@ -175,25 +197,35 @@ export function NewContract() {
         </Field>
         <div className="form-grid">
           <Field label="Послуги">
-            <select
-              required
-              name="serviceTypeIds"
-              multiple
-              value={selectedServices}
-              onChange={(event) =>
-                setSelectedServices(
-                  Array.from(event.currentTarget.selectedOptions, (option) => option.value),
-                )
-              }
-              size={Math.min(Math.max(a.services.length, 3), 6)}
-            >
+            <div className="service-checkboxes" role="group" aria-label="Послуги">
               {a.services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}{s.price !== undefined ? ` · ${s.price.toLocaleString("uk-UA")} ₴` : ""}
-                </option>
+                <label className="service-checkbox" key={s.id}>
+                  <input
+                    type="checkbox"
+                    name="serviceTypeIds"
+                    value={s.id}
+                    checked={selectedServices.includes(s.id)}
+                    onChange={(event) => {
+                      setSelectedServices((current) =>
+                        event.currentTarget.checked
+                          ? [...current, s.id]
+                          : current.filter((id) => id !== s.id),
+                      );
+                    }}
+                  />
+                  <span>
+                    <b>{s.name}</b>
+                    {s.description && <small>{s.description}</small>}
+                  </span>
+                  {s.price !== undefined && (
+                    <strong>{s.price.toLocaleString("uk-UA")} ₴</strong>
+                  )}
+                </label>
               ))}
-            </select>
-            <small>Щоб обрати кілька послуг, утримуйте Ctrl (Windows) або ⌘ (Mac).</small>
+              {!a.services.length && (
+                <small>Список послуг порожній. Попросіть адміністратора заповнити послуги.</small>
+              )}
+            </div>
           </Field>
           <Field label="Регіон">
             <select
@@ -216,28 +248,40 @@ export function NewContract() {
               ))}
             </select>
           </Field>
-          <Field label="Координата X">
-            <input
-              name="positionX"
-              defaultValue={selection?.positionX}
-              type="number"
-              min="0"
-              step="1"
-              required
-              placeholder="12"
-            />
+          <Field label="Тип місця">
+            <select
+              name="locationType"
+              value={locationType}
+              onChange={(event) => setLocationType(event.currentTarget.value as typeof locationType)}
+              disabled={!!selection}
+            >
+              <option value="coordinates">Координати</option>
+              <option value="burial_plot">Місце на кладовищі</option>
+              <option value="address">Адреса</option>
+            </select>
           </Field>
-          <Field label="Координата Y">
-            <input
-              name="positionY"
-              defaultValue={selection?.positionY}
-              type="number"
-              min="0"
-              step="1"
-              required
-              placeholder="8"
-            />
-          </Field>
+          {locationType === "coordinates" && (
+            <>
+              <Field label="Координата X">
+                <input name="positionX" type="number" min="0" step="1" required placeholder="12" />
+              </Field>
+              <Field label="Координата Y">
+                <input name="positionY" type="number" min="0" step="1" required placeholder="8" />
+              </Field>
+            </>
+          )}
+          {locationType === "address" && (
+            <Field label="Адреса виконання робіт">
+              <input
+                name="address"
+                required
+                maxLength={500}
+                value={address}
+                onChange={(event) => setAddress(event.currentTarget.value)}
+                placeholder="Місто, вулиця, будинок"
+              />
+            </Field>
+          )}
           <Field label="Дата та час виконання">
             <input
               name="date"

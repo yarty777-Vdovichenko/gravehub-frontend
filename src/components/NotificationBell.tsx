@@ -8,6 +8,13 @@ import "../style.css";
 import { useApp } from "./useApp";
 
 function notificationText(notification: NotificationItem) {
+  if (notification.type === "new_message") {
+    const sender =
+      typeof notification.payload.senderName === "string"
+        ? notification.payload.senderName
+        : "Користувач";
+    return `Нове повідомлення від ${sender}`;
+  }
   const title =
     typeof notification.payload.contractTitle === "string"
       ? notification.payload.contractTitle
@@ -103,7 +110,14 @@ export function NotificationBell() {
     if (!updated) return;
     setOpen(false);
     const contractId = updated.payload.contractId;
-    if (typeof contractId === "string") navigate(`/contracts/${encodeURIComponent(contractId)}`);
+    if (typeof contractId === "string") {
+      navigate(`/contracts/${encodeURIComponent(contractId)}`);
+      return;
+    }
+    const conversationId = updated.payload.conversationId;
+    if (typeof conversationId === "string") {
+      navigate(`/messages?conversation=${encodeURIComponent(conversationId)}`);
+    }
   }
 
   async function markAllRead() {

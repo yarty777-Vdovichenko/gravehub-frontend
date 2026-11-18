@@ -56,8 +56,11 @@ export interface Contract {
   serviceTypeId?: string;
   serviceTypes?: Option[];
   regionId: string;
-  positionX: number;
-  positionY: number;
+  locationType?: "coordinates" | "burial_plot" | "address";
+  positionX?: number | null;
+  positionY?: number | null;
+  address?: string | null;
+  burialPlotId?: string | null;
   date: string;
   budget: number;
   status: string;
@@ -102,8 +105,11 @@ export interface ContractInput {
   description: string;
   serviceTypeIds: string[];
   regionId: string;
-  positionX: number;
-  positionY: number;
+  locationType: "coordinates" | "burial_plot" | "address";
+  positionX?: number;
+  positionY?: number;
+  burialPlotId?: string;
+  address?: string;
   date: string;
   budget: number;
 }
@@ -128,7 +134,8 @@ export interface NotificationItem {
     | "proposal_received"
     | "proposal_accepted"
     | "proposal_rejected"
-    | "contract_status_changed";
+    | "contract_status_changed"
+    | "new_message";
   payload: Record<string, unknown>;
   readAt: string | null;
   createdAt: string;

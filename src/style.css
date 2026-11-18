@@ -1017,6 +1017,52 @@ footer > span:last-child {
   color: #64745b;
   margin-bottom: 8px;
 }
+.service-checkboxes {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.service-checkbox {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid #dde5da;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+.service-checkbox:has(input:checked) {
+  border-color: #78966f;
+  background: #f4f8f1;
+}
+.service-checkbox input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: #4e7458;
+}
+.service-checkbox > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.service-checkbox > span b {
+  color: #2f4435;
+  font-size: 13px;
+}
+.service-checkbox > span small {
+  color: #748074;
+  line-height: 1.35;
+}
+.service-checkbox > strong {
+  color: #365d43;
+  white-space: nowrap;
+  font-size: 12px;
+}
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

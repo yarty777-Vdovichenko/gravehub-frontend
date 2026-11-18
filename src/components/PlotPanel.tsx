@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { errorText } from "../api";
 import type { BurialPlot, Credit, Reservation } from "../new-api";
 import { plotsApi } from "../new-api";
@@ -39,6 +40,7 @@ export function PlotPanel({
   onChanged: () => void;
 }) {
   const a = useApp(),
+    navigate = useNavigate(),
     mine = reservation?.plotId === plot.id,
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -114,6 +116,25 @@ export function PlotPanel({
             }
           >
             Зарезервувати
+          </button>
+          <button
+            className="button secondary"
+            onClick={() =>
+              navigate("/contracts/new", {
+                state: {
+                  plotSelection: {
+                    id: plot.id,
+                    number: `${plot.positionX + 1}-${plot.positionY + 1}`,
+                    cemetery: cemeteryName,
+                    regionName: cemeteryName,
+                    positionX: plot.positionX,
+                    positionY: plot.positionY,
+                  },
+                },
+              })
+            }
+          >
+            Створити замовлення для цього місця
           </button>
         </>
       )}
