@@ -61,6 +61,12 @@ export interface Contract {
   positionY?: number | null;
   address?: string | null;
   burialPlotId?: string | null;
+  burialPlot?: {
+    id: string;
+    positionX: number;
+    positionY: number;
+    cemetery: { id: string; name: string; city: string };
+  } | null;
   date: string;
   budget: number;
   status: string;
