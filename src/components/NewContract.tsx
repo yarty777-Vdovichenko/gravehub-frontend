@@ -12,7 +12,8 @@ useNavigate
 } from "react-router-dom";
 import type {
 Contract,
-ContractInput
+ContractInput,
+SelectableService
 } from "../api";
 import {
 api,
@@ -100,6 +101,31 @@ export function NewContract() {
     return () => controller.abort();
   }, [selectedServices, a.demo, a.services]);
   const selectedOwnedPlot = ownedPlots.find((plot) => plot.id === selectedPlotId);
+  const renderService = (service: SelectableService) => (
+    <label className="service-checkbox" key={service.id}>
+      <input
+        type="checkbox"
+        name="serviceTypeIds"
+        value={service.id}
+        checked={selectedServices.includes(service.id)}
+        onChange={(event) => {
+          const checked = event.currentTarget.checked;
+          setSelectedServices((current) =>
+            checked
+              ? [...current, service.id]
+              : current.filter((id) => id !== service.id),
+          );
+        }}
+      />
+      <span>
+        <b>{service.name}</b>
+        {service.description && <small>{service.description}</small>}
+      </span>
+      {service.price !== undefined && (
+        <strong>{service.price.toLocaleString("uk-UA")} ₴</strong>
+      )}
+    </label>
+  );
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -209,38 +235,35 @@ export function NewContract() {
           />
         </Field>
         <div className="form-grid">
-          <Field label="Послуги">
-            <div className="service-checkboxes" role="group" aria-label="Послуги">
-              {a.services.map((s) => (
-                <label className="service-checkbox" key={s.id}>
-                  <input
-                    type="checkbox"
-                    name="serviceTypeIds"
-                    value={s.id}
-                    checked={selectedServices.includes(s.id)}
-                    onChange={(event) => {
-                      const checked = event.currentTarget.checked;
-                      setSelectedServices((current) =>
-                        checked
-                          ? [...current, s.id]
-                          : current.filter((id) => id !== s.id),
-                      );
-                    }}
-                  />
-                  <span>
-                    <b>{s.name}</b>
-                    {s.description && <small>{s.description}</small>}
-                  </span>
-                  {s.price !== undefined && (
-                    <strong>{s.price.toLocaleString("uk-UA")} ₴</strong>
-                  )}
-                </label>
-              ))}
-              {!a.services.length && (
-                <small>Список послуг порожній. Попросіть адміністратора заповнити послуги.</small>
-              )}
-            </div>
-          </Field>
+          <div className="field">
+            <span>Послуги</span>
+            {a.serviceCategories.length ? (
+              a.serviceCategories.map((category) => (
+                <fieldset className="service-category-options" key={category.id}>
+                  <legend>{category.name}</legend>
+                  {category.description && <p>{category.description}</p>}
+                  <div
+                    className="service-checkboxes"
+                    role="group"
+                    aria-label={`Послуги: ${category.name}`}
+                  >
+                    {category.children.map(renderService)}
+                  </div>
+                </fieldset>
+              ))
+            ) : (
+              <div className="service-checkboxes" role="group" aria-label="Послуги">
+                {a.services.map(renderService)}
+              </div>
+            )}
+            {a.servicesLoading && (
+              <small role="status">Завантаження послуг…</small>
+            )}
+            {a.servicesError && <ErrorBox text={a.servicesError} />}
+            {!a.servicesLoading && !a.servicesError && !a.services.length && (
+              <small>Список послуг порожній. Попросіть адміністратора заповнити послуги.</small>
+            )}
+          </div>
           <Field label="Регіон">
             <select
               required

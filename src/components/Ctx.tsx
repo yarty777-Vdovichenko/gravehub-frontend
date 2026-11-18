@@ -4,6 +4,8 @@ Contract,
 Mode,
 Option,
 Proposal,
+SelectableService,
+ServiceCategory,
 Session
 } from "../api";
 import "../style.css";
@@ -17,7 +19,10 @@ export type Ctx = {
   logout: () => Promise<void>;
   contracts: Contract[];
   setContracts: React.Dispatch<React.SetStateAction<Contract[]>>;
-  services: Option[];
+  services: SelectableService[];
+  serviceCategories: ServiceCategory[];
+  servicesLoading: boolean;
+  servicesError: string;
   regions: Option[];
   regionsLoading: boolean;
   regionsError: string;

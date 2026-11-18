@@ -175,6 +175,8 @@ export function Auth({ register = false }: { register?: boolean }) {
             {register && role === "employee" && (
               <EmployeeFields
                 services={a.services}
+                servicesLoading={a.servicesLoading}
+                servicesError={a.servicesError}
                 regions={a.regions}
                 regionsLoading={a.regionsLoading}
                 regionsError={a.regionsError}
@@ -187,6 +189,11 @@ export function Auth({ register = false }: { register?: boolean }) {
               className="button primary"
               disabled={
                 busy ||
+                (register &&
+                  role === "employee" &&
+                  (a.servicesLoading ||
+                    !!a.servicesError ||
+                    a.services.length === 0)) ||
                 (register &&
                   role === "employee" &&
                   (a.regionsLoading || !!a.regionsError || a.regions.length === 0))

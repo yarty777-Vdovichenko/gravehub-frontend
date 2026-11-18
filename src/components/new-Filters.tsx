@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Option } from "../api";
+import type { Option, SelectableService } from "../api";
 import type {
 SearchFilters
 } from "../new-api";
@@ -11,7 +11,7 @@ export function Filters({
   employee,
   onChange,
 }: {
-  services: Option[];
+  services: SelectableService[];
   regions: Option[];
   employee: boolean;
   onChange: (f: Omit<SearchFilters, "page" | "limit">, limit: number) => void;
@@ -71,7 +71,7 @@ export function Filters({
         <option value="">Усі послуги</option>
         {services.map((x) => (
           <option key={x.id} value={x.id}>
-            {x.name}
+            {x.categoryName ? `${x.categoryName} · ${x.name}` : x.name}
           </option>
         ))}
       </select>

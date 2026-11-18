@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Employee } from "../new-api";
-import { api, errorText, type Option } from "../api";
+import { api, errorText, type Option, type SelectableService } from "../api";
 import "../style.css";
 import { ErrorBox } from "./ErrorBox";
 
@@ -9,9 +9,13 @@ type EmployeeProfile = Employee & { description: string };
 export function EmployeeProfileEditor({
   services,
   regions,
+  servicesLoading,
+  servicesError,
 }: {
-  services: Option[];
+  services: SelectableService[];
   regions: Option[];
+  servicesLoading: boolean;
+  servicesError: string;
 }) {
   const [profile, setProfile] = useState<EmployeeProfile>();
   const [description, setDescription] = useState("");
@@ -139,8 +143,15 @@ export function EmployeeProfileEditor({
                 onChange={(event) => setDescription(event.target.value)}
               />
             </label>
-            <fieldset>
+            <fieldset disabled={servicesLoading || !!servicesError || !services.length}>
               <legend>Послуги та спеціалізації</legend>
+              {servicesLoading ? (
+                <p>Завантаження послуг…</p>
+              ) : servicesError ? (
+                <p className="error">{servicesError}</p>
+              ) : !services.length ? (
+                <p className="error">Послуги наразі недоступні.</p>
+              ) : null}
               {services.map((service) => (
                 <label className="checkbox" key={service.id}>
                   <input
@@ -148,7 +159,9 @@ export function EmployeeProfileEditor({
                     checked={specializationIds.includes(service.id)}
                     onChange={() => toggleValue(service.id, specializationIds, setSpecializationIds)}
                   />
-                  {service.name}
+                  {service.categoryName
+                    ? `${service.categoryName} · ${service.name}`
+                    : service.name}
                 </label>
               ))}
             </fieldset>

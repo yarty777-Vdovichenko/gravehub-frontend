@@ -1,4 +1,64 @@
 import { api } from "./api";
+import type { Option, SelectableService, ServiceCategory } from "./api";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function normalizeServiceOption(value: unknown): Option {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "string" ||
+    typeof value.name !== "string" ||
+    (value.description !== undefined &&
+      typeof value.description !== "string") ||
+    (value.price !== undefined &&
+      (typeof value.price !== "number" || !Number.isFinite(value.price)))
+  ) {
+    throw new Error("Сервер повернув некоректний каталог послуг.");
+  }
+  return {
+    id: value.id,
+    name: value.name,
+    ...(typeof value.description === "string"
+      ? { description: value.description }
+      : {}),
+    ...(typeof value.price === "number" ? { price: value.price } : {}),
+  };
+}
+
+export function normalizeServiceCatalog(value: unknown): ServiceCategory[] {
+  if (!Array.isArray(value)) {
+    throw new Error("Сервер повернув некоректний каталог послуг.");
+  }
+  return value.map((rawCategory) => {
+    if (!isRecord(rawCategory) || !Array.isArray(rawCategory.children)) {
+      throw new Error("Сервер повернув некоректний каталог послуг.");
+    }
+    const category = normalizeServiceOption(rawCategory);
+    const children: SelectableService[] = rawCategory.children.map(
+      (rawService) => {
+        const service = normalizeServiceOption(rawService);
+        if (typeof service.price !== "number") {
+          throw new Error("Сервер повернув некоректний каталог послуг.");
+        }
+        return {
+          ...service,
+          categoryId: category.id,
+          categoryName: category.name,
+        };
+      },
+    );
+    return { ...category, children };
+  });
+}
+
+export function flattenServiceCatalog(
+  categories: ServiceCategory[],
+): SelectableService[] {
+  return categories.flatMap((category) => category.children);
+}
+
 export interface MetaPage<T> {
   items: T[];
   meta: { total: number; page: number; limit: number; pages: number };
@@ -110,6 +170,10 @@ export interface SearchFilters {
 const profiles=new Map<string,Employee>();
 function normalize(raw:unknown):Employee{if(!raw||typeof raw!=='object'||!('id'in raw)||typeof raw.id!=='string')throw new Error('Некоректні дані виконавця');const r=raw as Record<string,unknown>;const list=(value:unknown):{id:string;name:string}[]=>Array.isArray(value)?value.filter((v):v is {id:string;name:string}=>!!v&&typeof v==='object'&&typeof v.id==='string'&&typeof v.name==='string'):[];const u=r.user as Record<string,unknown>|undefined;const portfolio=Array.isArray(r.portfolio)?r.portfolio.filter((item):item is NonNullable<Employee["portfolio"]>[number]=>!!item&&typeof item==="object"&&"id"in item&&typeof item.id==="string"&&"url"in item&&typeof item.url==="string"&&"type"in item&&(item.type==="image"||item.type==="video")):undefined;return {id:raw.id,rating:typeof r.rating==='number'?r.rating:0,reviewsCount:typeof r.reviewsCount==='number'?r.reviewsCount:undefined,completedContracts:typeof r.completedContracts==='number'?r.completedContracts:0,description:typeof r.description==="string"?r.description:undefined,portfolio,user:{id:typeof u?.id==='string'?u.id:'',name:typeof u?.name==='string'?u.name:'Виконавець'},regions:list(r.regions),specialization:list(r.specialization??r.specializations??r.services)}}
 export const newApi = {
+  serviceCatalog: async () => {
+    const { data } = await api.get<unknown>("/services");
+    return normalizeServiceCatalog(data);
+  },
   employees: async (params: SearchFilters, signal?: AbortSignal) => {
     const { data } = await api.get<MetaPage<unknown>>("/employees", {
       params,

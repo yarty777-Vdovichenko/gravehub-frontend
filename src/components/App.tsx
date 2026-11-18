@@ -19,6 +19,8 @@ import type {
 Mode,
 Option,
 Proposal,
+SelectableService,
+ServiceCategory,
 Session
 } from "../api";
 import {
@@ -29,6 +31,7 @@ errorText,
 listenSession,
 refresh
 } from "../api";
+import { flattenServiceCatalog, newApi } from "../new-api";
 import * as demoData from "../demo";
 import { AdvancedMarket,Directory } from "../NewPages";
 import "../style.css";
@@ -51,9 +54,12 @@ export function App() {
     [demo,setDemoState]=useState(false),
     [boot, setBoot] = useState(configured),
     [contracts, setContracts] = useState(demoData.contracts),
-    [services, setServices] = useState<Option[]>(
+    [services, setServices] = useState<SelectableService[]>(
       configured ? [] : demoData.services,
     ),
+    [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]),
+    [servicesLoading, setServicesLoading] = useState(configured),
+    [servicesError, setServicesError] = useState(""),
     [regions, setRegions] = useState<Option[]>(
       configured ? [] : demoData.regions,
     ),
@@ -113,10 +119,14 @@ export function App() {
       refresh()
         .catch(() => {})
         .finally(() => setBoot(false));
-      api
-        .get<Option[]>("/services")
-        .then((r) => setServices(r.data))
-        .catch(() => {});
+      newApi
+        .serviceCatalog()
+        .then((categories) => {
+          setServiceCategories(categories);
+          setServices(flattenServiceCatalog(categories));
+        })
+        .catch((e: unknown) => setServicesError(errorText(e)))
+        .finally(() => setServicesLoading(false));
       void reloadRegions();
     }
   }, [reloadRegions]);
@@ -130,6 +140,9 @@ export function App() {
   const startDemo = () => {
     setDemoState(true);
     setServices(demoData.services);
+    setServiceCategories([]);
+    setServicesError("");
+    setServicesLoading(false);
     setRegions(demoData.regions);
     setSession({
       accessToken: "",
@@ -174,6 +187,9 @@ export function App() {
         contracts,
         setContracts,
         services,
+        serviceCategories,
+        servicesLoading,
+        servicesError,
         regions,
         regionsLoading,
         regionsError,

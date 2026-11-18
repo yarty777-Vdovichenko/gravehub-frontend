@@ -1,16 +1,18 @@
-import type {
-Option
-} from "../api";
+import type { Option, SelectableService } from "../api";
 import "../style.css";
 import { Field } from './Field';
 export function EmployeeFields({
   services,
+  servicesLoading,
+  servicesError,
   regions,
   regionsLoading,
   regionsError,
   retryRegions,
 }: {
-  services: Option[];
+  services: SelectableService[];
+  servicesLoading: boolean;
+  servicesError: string;
   regions: Option[];
   regionsLoading: boolean;
   regionsError: string;
@@ -27,14 +29,22 @@ export function EmployeeFields({
           rows={3}
         />
       </Field>
-      <fieldset>
+      <fieldset disabled={servicesLoading || !!servicesError || !services.length}>
         <legend>Спеціалізації</legend>
-        {services.map((s) => (
-          <label className="checkbox" key={s.id}>
-            <input type="checkbox" name="specializationIds" value={s.id} />
-            {s.name}
-          </label>
-        ))}
+        {servicesLoading ? (
+          <p className="catalog-state">Завантаження послуг…</p>
+        ) : servicesError ? (
+          <p className="catalog-state error">{servicesError}</p>
+        ) : services.length ? (
+          services.map((s) => (
+            <label className="checkbox" key={s.id}>
+              <input type="checkbox" name="specializationIds" value={s.id} />
+              {s.categoryName ? `${s.categoryName} · ${s.name}` : s.name}
+            </label>
+          ))
+        ) : (
+          <p className="catalog-state error">Послуги наразі недоступні.</p>
+        )}
       </fieldset>
       <fieldset disabled={regionsLoading || !!regionsError || regions.length === 0}>
         <legend>Регіони роботи</legend>

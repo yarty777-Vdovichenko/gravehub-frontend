@@ -42,6 +42,13 @@ export interface Option {
   description?: string;
   price?: number;
 }
+export interface SelectableService extends Option {
+  categoryId?: string;
+  categoryName?: string;
+}
+export interface ServiceCategory extends Option {
+  children: SelectableService[];
+}
 export interface Review {
   id: string;
   rating: number;

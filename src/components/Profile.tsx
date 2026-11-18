@@ -45,7 +45,12 @@ export function Profile() {
           ))}
         </div>
         {a.session?.user.roles.includes("employee") && a.mode === "employee" && (
-          <EmployeeProfileEditor services={a.services} regions={a.regions} />
+          <EmployeeProfileEditor
+            services={a.services}
+            regions={a.regions}
+            servicesLoading={a.servicesLoading}
+            servicesError={a.servicesError}
+          />
         )}
         {a.session?.user.roles.includes("employee") && a.mode !== "employee" && (
           <p className="profile-mode-hint">
@@ -76,6 +81,8 @@ export function Profile() {
             <h3>Стати виконавцем</h3>
             <EmployeeFields
               services={a.services}
+              servicesLoading={a.servicesLoading}
+              servicesError={a.servicesError}
               regions={a.regions}
               regionsLoading={a.regionsLoading}
               regionsError={a.regionsError}
@@ -84,7 +91,15 @@ export function Profile() {
             {error && <ErrorBox text={error} />}
             <button
               className="button primary"
-              disabled={busy || a.regionsLoading || !!a.regionsError || a.regions.length === 0}
+              disabled={
+                busy ||
+                a.servicesLoading ||
+                !!a.servicesError ||
+                a.services.length === 0 ||
+                a.regionsLoading ||
+                !!a.regionsError ||
+                a.regions.length === 0
+              }
             >
               Запросити роль виконавця
             </button>
