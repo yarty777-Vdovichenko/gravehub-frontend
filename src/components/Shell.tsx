@@ -10,12 +10,15 @@ LogOut,
 MapPin,
 Menu,
 MessageCircle,
+Moon,
 Search,
 Send,
 ShieldCheck,
+Sun,
 UserRound
 } from "lucide-react";
 import React,{
+useEffect,
 useState
 } from "react";
 import {
@@ -32,7 +35,16 @@ import { NotificationBell } from "./NotificationBell";
 export function Shell({ children }: { children: React.ReactNode }) {
   const a = useApp(),
     [mobile, setMobile] = useState(false),
+    [theme, setTheme] = useState<"light" | "dark">(() => {
+      const saved = localStorage.getItem("gravehub-theme");
+      if (saved === "light" || saved === "dark") return saved;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }),
     nav = useNavigate();
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("gravehub-theme", theme);
+  }, [theme]);
   const hasCustomerRole = a.session?.user.roles.includes("customer") ?? false;
   const hasEmployeeRole = a.session?.user.roles.includes("employee") ?? false;
   const links = [
@@ -165,6 +177,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="header-right">
             <NotificationBell />
+            <button
+              className="icon-button theme-toggle"
+              title={theme === "light" ? "Увімкнути темну тему" : "Увімкнути світлу тему"}
+              aria-label={theme === "light" ? "Увімкнути темну тему" : "Увімкнути світлу тему"}
+              aria-pressed={theme === "dark"}
+              onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}
+            >
+              {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
             <span className="secure">
               <ShieldCheck size={15} /> Простір довіри
             </span>

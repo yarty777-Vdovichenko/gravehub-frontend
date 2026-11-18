@@ -5,12 +5,48 @@
   background: #f7f8fa;
   font-synthesis: none;
   font-size: 13px;
+  --page-bg: #f7f8fa;
+  --surface: #fff;
+  --surface-soft: #f6f7f1;
+  --surface-selected: #eaf1e9;
+  --text: #263c32;
+  --text-strong: #2f4435;
+  --text-muted: #839087;
+  --text-subtle: #98a097;
+  --border: #e7ebe7;
+  --border-soft: #e9ece9;
+  --input-border: #dfe5e0;
+  --green: #356046;
+  --green-soft: #688a70;
+  --shadow: 0 1px 4px #192d1312;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --page-bg: #111713;
+  --surface: #1a211d;
+  --surface-soft: #202923;
+  --surface-selected: #28382f;
+  --text: #dde7df;
+  --text-strong: #edf5ef;
+  --text-muted: #aab7ae;
+  --text-subtle: #96a49b;
+  --border: #303a34;
+  --border-soft: #2b342e;
+  --input-border: #3b473f;
+  --green: #9fc4a8;
+  --green-soft: #91b19a;
+  --shadow: 0 1px 4px #00000055;
+  color: var(--text);
+  background: var(--page-bg);
+  color-scheme: dark;
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
+  background: var(--page-bg);
+  color: var(--text);
 }
 a {
   color: inherit;
@@ -316,6 +352,13 @@ header {
 }
 .mobile-menu {
   display: none;
+}
+.theme-toggle {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface);
 }
 main {
   max-width: 1430px;
@@ -1837,4 +1880,99 @@ legend {
   .chat-compose .button { align-self:flex-end; }
   .notification-menu { right:-40px; }
   .estimate-box { align-items:flex-start; }
+}
+
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] header,
+:root[data-theme="dark"] .main,
+:root[data-theme="dark"] .panel,
+:root[data-theme="dark"] .notification-menu,
+:root[data-theme="dark"] .chat-message,
+:root[data-theme="dark"] .service-checkbox,
+:root[data-theme="dark"] .plot-panel,
+:root[data-theme="dark"] .auth-form-area {
+  background: var(--surface);
+  color: var(--text);
+}
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] header,
+:root[data-theme="dark"] .panel,
+:root[data-theme="dark"] .notification-menu,
+:root[data-theme="dark"] .chat-sidebar,
+:root[data-theme="dark"] .chat-heading,
+:root[data-theme="dark"] .chat-compose,
+:root[data-theme="dark"] .chat-messages,
+:root[data-theme="dark"] .conversation-row,
+:root[data-theme="dark"] .notification-item,
+:root[data-theme="dark"] .notification-menu-heading,
+:root[data-theme="dark"] .user,
+:root[data-theme="dark"] .header-divider {
+  border-color: var(--border);
+}
+:root[data-theme="dark"] p,
+:root[data-theme="dark"] small,
+:root[data-theme="dark"] .field > span,
+:root[data-theme="dark"] .employee-editor .field > span,
+:root[data-theme="dark"] .breadcrumb,
+:root[data-theme="dark"] .secure,
+:root[data-theme="dark"] .support p,
+:root[data-theme="dark"] .user small,
+:root[data-theme="dark"] .chat-message p,
+:root[data-theme="dark"] .chat-copy,
+:root[data-theme="dark"] .muted {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] h1,
+:root[data-theme="dark"] h2,
+:root[data-theme="dark"] h3,
+:root[data-theme="dark"] b,
+:root[data-theme="dark"] strong,
+:root[data-theme="dark"] .breadcrumb span,
+:root[data-theme="dark"] .user b {
+  color: var(--text-strong);
+}
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea {
+  background: #151b17;
+  border-color: var(--input-border);
+  color: var(--text);
+}
+:root[data-theme="dark"] .mode-switch,
+:root[data-theme="dark"] .support,
+:root[data-theme="dark"] .demo-banner,
+:root[data-theme="dark"] .estimate-box,
+:root[data-theme="dark"] .profile-mode-hint,
+:root[data-theme="dark"] .portfolio-grid figure,
+:root[data-theme="dark"] .chat-messages,
+:root[data-theme="dark"] .chat-message.own,
+:root[data-theme="dark"] .conversation-row:hover,
+:root[data-theme="dark"] .conversation-row.selected,
+:root[data-theme="dark"] .notification-item:hover,
+:root[data-theme="dark"] .notification-item.unread,
+:root[data-theme="dark"] .service-checkbox:has(input:checked) {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .sidebar nav a,
+:root[data-theme="dark"] .icon-button,
+:root[data-theme="dark"] .breadcrumb,
+:root[data-theme="dark"] .secure,
+:root[data-theme="dark"] .user > svg {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .sidebar nav a.active,
+:root[data-theme="dark"] .mode-switch .selected,
+:root[data-theme="dark"] .add-role-button,
+:root[data-theme="dark"] .support a,
+:root[data-theme="dark"] .link-button,
+:root[data-theme="dark"] .service-checkbox > strong {
+  color: var(--green);
+  background: var(--surface-selected);
+}
+:root[data-theme="dark"] .mode-switch button {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .mode-switch .selected {
+  box-shadow: var(--shadow);
 }
