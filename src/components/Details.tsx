@@ -233,7 +233,9 @@ export function Details() {
                 {c.locationType === "address"
                   ? `Адреса: ${c.address}`
                   : c.locationType === "burial_plot"
-                    ? `Місце на кладовищі${c.burialPlotId ? ` · ${c.burialPlotId.slice(0, 8)}` : ""}`
+                    ? c.burialPlot
+                      ? `Місце ${c.burialPlot.positionX + 1}-${c.burialPlot.positionY + 1} · ${c.burialPlot.cemetery.name}`
+                      : `Місце на кладовищі${c.burialPlotId ? ` · № ${c.burialPlotId.slice(0, 8)}` : ""}`
                     : `Координати: ${c.positionX ?? "—"}, ${c.positionY ?? "—"}`}
               </span>
             </div>

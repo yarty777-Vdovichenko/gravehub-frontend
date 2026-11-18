@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
 import { errorText } from "../api";
 import type { BurialPlot, Credit, Reservation } from "../new-api";
 import { plotsApi } from "../new-api";
@@ -20,9 +19,9 @@ function useCountdown(until: string | undefined, onExpire: () => void) {
       if (ms <= 0) onExpire();
     };
     tick();
-    const t = setInterval(tick, 1000);
-    return () => clearInterval(t);
-  }, [until]);
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [until, onExpire]);
   return left;
 }
 
@@ -36,46 +35,60 @@ export function PlotPanel({
   plot: BurialPlot;
   cemeteryName: string;
   reservation: Reservation | null;
-  onReservation: (r: Reservation | null) => void;
+  onReservation: (reservation: Reservation | null) => void;
   onChanged: () => void;
 }) {
-  const a = useApp(),
-    navigate = useNavigate(),
-    mine = reservation?.plotId === plot.id,
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [payment, setPayment] = useState<"full" | "credit">("full"),
-    [months, setMonths] = useState<(typeof TERMS)[number]>(12),
-    [down, setDown] = useState(0),
-    [credit, setCredit] = useState<Credit | null>(null);
-  const left = useCountdown(mine ? reservation?.reservedUntil : undefined, () => {
+  const { notice } = useApp();
+  const mine = reservation?.plotId === plot.id;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [payment, setPayment] = useState<"full" | "credit">("full");
+  const [months, setMonths] = useState<(typeof TERMS)[number]>(12);
+  const [downPayment, setDownPayment] = useState(0);
+  const [credit, setCredit] = useState<Credit | null>(null);
+
+  const handleExpired = useCallback(() => {
     onReservation(null);
     onChanged();
-    a.notice("Час резервації минув — місце знову вільне.");
-  });
+    notice("Час резервації минув — місце знову вільне.");
+  }, [notice, onChanged, onReservation]);
+  const left = useCountdown(
+    mine ? reservation?.reservedUntil : undefined,
+    handleExpired,
+  );
+
   useEffect(() => {
     setError("");
     setCredit(null);
   }, [plot.id]);
+
   useEffect(() => {
     if (!mine || payment !== "credit") return;
-    if (!Number.isInteger(down) || down < 0 || down >= plot.price) {
+    setCredit(null);
+    if (
+      !Number.isInteger(downPayment) ||
+      downPayment < 0 ||
+      downPayment >= plot.price
+    ) {
       setCredit(null);
       setError(
-        down >= plot.price ? "Перший внесок має бути меншим за ціну місця." : "",
+        downPayment >= plot.price
+          ? "Перший внесок має бути меншим за ціну місця."
+          : "",
       );
       return;
     }
-    let live = true;
+    let active = true;
     setError("");
     plotsApi
-      .creditPreview(plot.id, months, down)
-      .then((c) => live && setCredit(c))
-      .catch((e) => live && setError(errorText(e)));
+      .creditPreview(plot.id, months, downPayment)
+      .then((preview) => active && setCredit(preview))
+      .catch((e: unknown) => active && setError(errorText(e)));
     return () => {
-      live = false;
+      active = false;
     };
-  }, [mine, payment, months, down, plot.id, plot.price]);
+  }, [mine, payment, months, downPayment, plot.id, plot.price]);
+
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -88,8 +101,10 @@ export function PlotPanel({
       setBusy(false);
     }
   }
-  const mm = String(Math.floor(left / 60)).padStart(2, "0"),
-    ss = String(left % 60).padStart(2, "0");
+
+  const minutes = String(Math.floor(left / 60)).padStart(2, "0");
+  const seconds = String(left % 60).padStart(2, "0");
+
   return (
     <div className="plot-panel panel">
       <h3>
@@ -100,11 +115,16 @@ export function PlotPanel({
       {error && <ErrorBox text={error} />}
       {plot.status === "sold" && <p>Це місце вже продане.</p>}
       {plot.status === "reserved" && !mine && (
-        <p>Місце тимчасово зарезервоване. Якщо резервацію не завершать, воно звільниться за кілька хвилин.</p>
+        <p>
+          Місце тимчасово зарезервоване. Якщо резервацію не завершать, воно
+          звільниться за кілька хвилин.
+        </p>
       )}
       {plot.status === "available" && !mine && (
         <>
-          <p>Резервація тримає місце за вами 10 хвилин, щоб ви встигли оформити покупку.</p>
+          <p>
+            Резервація тримає місце за вами 10 хвилин, щоб ви встигли оформити покупку.
+          </p>
           <button
             className="button primary"
             disabled={busy}
@@ -115,41 +135,32 @@ export function PlotPanel({
               })
             }
           >
-            Зарезервувати
-          </button>
-          <button
-            className="button secondary"
-            onClick={() =>
-              navigate("/contracts/new", {
-                state: {
-                  plotSelection: {
-                    id: plot.id,
-                    number: `${plot.positionX + 1}-${plot.positionY + 1}`,
-                    cemetery: cemeteryName,
-                    regionName: cemeteryName,
-                    positionX: plot.positionX,
-                    positionY: plot.positionY,
-                  },
-                },
-              })
-            }
-          >
-            Створити замовлення для цього місця
+            Зарезервувати для покупки
           </button>
         </>
       )}
       {mine && (
         <>
           <p role="timer" className="plot-timer">
-            Резервація діє ще {mm}:{ss}
+            Резервація діє ще {minutes}:{seconds}
           </p>
           <div className="plot-pay">
             <label className="checkbox">
-              <input type="radio" name="pay" checked={payment === "full"} onChange={() => setPayment("full")} />
+              <input
+                type="radio"
+                name="pay"
+                checked={payment === "full"}
+                onChange={() => setPayment("full")}
+              />
               Повна оплата
             </label>
             <label className="checkbox">
-              <input type="radio" name="pay" checked={payment === "credit"} onChange={() => setPayment("credit")} />
+              <input
+                type="radio"
+                name="pay"
+                checked={payment === "credit"}
+                onChange={() => setPayment("credit")}
+              />
               У кредит
             </label>
           </div>
@@ -157,9 +168,16 @@ export function PlotPanel({
             <div className="plot-credit">
               <label className="field">
                 <span>Строк, місяців</span>
-                <select value={months} onChange={(e) => setMonths(Number(e.target.value) as (typeof TERMS)[number])}>
-                  {TERMS.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                <select
+                  value={months}
+                  onChange={(event) =>
+                    setMonths(Number(event.target.value) as (typeof TERMS)[number])
+                  }
+                >
+                  {TERMS.map((term) => (
+                    <option key={term} value={term}>
+                      {term}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -169,13 +187,19 @@ export function PlotPanel({
                   type="number"
                   min={0}
                   step={1}
-                  value={down}
-                  onChange={(e) => setDown(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                  value={downPayment}
+                  onChange={(event) =>
+                    setDownPayment(
+                      Math.max(0, Math.floor(Number(event.target.value) || 0)),
+                    )
+                  }
                 />
               </label>
               {credit && (
                 <ul className="credit-summary">
-                  <li>Щомісячний платіж: <b>{money(credit.monthlyPayment)}</b></li>
+                  <li>
+                    Щомісячний платіж: <b>{money(credit.monthlyPayment)}</b>
+                  </li>
                   <li>Ставка: {Math.round(credit.annualRate * 100)}% річних</li>
                   <li>Разом сплатите: {money(credit.totalPaid)}</li>
                   <li>Переплата: {money(credit.overpayment)}</li>
@@ -193,11 +217,15 @@ export function PlotPanel({
                     plot.id,
                     payment === "full"
                       ? { paymentType: "full" }
-                      : { paymentType: "credit", months, downPayment: down },
+                      : {
+                          paymentType: "credit",
+                          months,
+                          downPayment,
+                        },
                   );
                   onReservation(null);
                   onChanged();
-                  a.notice("Місце придбано. Дякуємо!");
+                  notice("Місце придбано. Дякуємо!");
                 })
               }
             >

@@ -1,7 +1,6 @@
 import {
 ArrowRight,
-ChevronLeft,
-MapPin
+ChevronLeft
 } from "lucide-react";
 import React,{
 useEffect,
@@ -9,7 +8,6 @@ useState
 } from "react";
 import {
 Link,
-useLocation,
 useNavigate
 } from "react-router-dom";
 import type {
@@ -20,22 +18,24 @@ import {
 api,
 errorText
 } from "../api";
+import type { OwnedPlot } from "../new-api";
+import { newApi } from "../new-api";
 import "../style.css";
 import { demoUuid } from './demoUuid';
 import { ErrorBox } from './ErrorBox';
 import { Field } from './Field';
 import { PageTitle } from './PageTitle';
-import { readPlotSelection } from './readPlotSelection';
 import { useApp } from './useApp';
 export function NewContract() {
   const a = useApp(),
-    location = useLocation(),
     nav = useNavigate(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [locationType, setLocationType] = useState<"coordinates" | "burial_plot" | "address">(
-      () => readPlotSelection(location.state) ? "burial_plot" : "coordinates",
-    ),
+    [locationType, setLocationType] = useState<"coordinates" | "burial_plot" | "address">("coordinates"),
+    [ownedPlots, setOwnedPlots] = useState<OwnedPlot[]>([]),
+    [plotsLoading, setPlotsLoading] = useState(false),
+    [plotsError, setPlotsError] = useState(""),
+    [selectedPlotId, setSelectedPlotId] = useState(""),
     [address, setAddress] = useState(""),
     [selectedServices, setSelectedServices] = useState<string[]>(() => {
       const service = new URLSearchParams(window.location.search).get("service");
@@ -44,6 +44,30 @@ export function NewContract() {
     [estimate, setEstimate] = useState<number>(),
     [estimateError, setEstimateError] = useState(""),
     [budget, setBudget] = useState("");
+  useEffect(() => {
+    if (a.demo || locationType !== "burial_plot") {
+      setOwnedPlots([]);
+      setPlotsLoading(false);
+      return;
+    }
+    let active = true;
+    setPlotsLoading(true);
+    setPlotsError("");
+    newApi
+      .mine()
+      .then((items) => {
+        if (active) setOwnedPlots(items);
+      })
+      .catch((e: unknown) => {
+        if (active) setPlotsError(errorText(e));
+      })
+      .finally(() => {
+        if (active) setPlotsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [a.demo, locationType]);
   useEffect(() => {
     if (!selectedServices.length) {
       setEstimate(undefined);
@@ -75,7 +99,7 @@ export function NewContract() {
       });
     return () => controller.abort();
   }, [selectedServices, a.demo, a.services]);
-  const selection = a.demo ? readPlotSelection(location.state) : null;
+  const selectedOwnedPlot = ownedPlots.find((plot) => plot.id === selectedPlotId);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -102,11 +126,11 @@ export function NewContract() {
         return;
       }
     } else if (locationType === "burial_plot") {
-      if (!selection) {
-        setError("Оберіть місце на карті кладовища.");
+      if (!selectedPlotId) {
+        setError("Оберіть придбану ділянку.");
         return;
       }
-      body.burialPlotId = selection.id;
+      body.burialPlotId = selectedPlotId;
     } else {
       body.address = address.trim();
       if (!body.address) {
@@ -157,22 +181,16 @@ export function NewContract() {
       />
       <form className="panel form-panel" onSubmit={submit}>
         <h2>Деталі замовлення</h2>
-        {selection ? (
+        {locationType === "burial_plot" && selectedOwnedPlot ? (
           <div className="plot-selection-banner">
-            <MapPin size={19} />
             <div>
               <b>
-                {selection.cemetery} · ділянка {selection.number}
+                {selectedOwnedPlot.cemetery.name} · місце {selectedOwnedPlot.positionX + 1}-{selectedOwnedPlot.positionY + 1}
               </b>
-              <p>Демонстраційне місце. Замовлення догляду не бронює ділянку.</p>
-              <Link to="/map">Змінити місце на карті</Link>
+              <p>Ваше придбане місце · {selectedOwnedPlot.cemetery.city}.</p>
             </div>
           </div>
-        ) : (
-          <Link className="back" to="/map">
-            <MapPin size={15} /> Обрати місце на карті
-          </Link>
-        )}
+        ) : null}
         <Field label="Назва замовлення">
           <input
             name="title"
@@ -185,11 +203,6 @@ export function NewContract() {
           <textarea
             name="description"
             maxLength={2000}
-            defaultValue={
-              selection
-                ? `Догляд за ділянкою ${selection.number}, ${selection.cemetery}.\nПобажання: `
-                : undefined
-            }
             required
             rows={4}
             placeholder="Опишіть обсяг роботи, особливості та ваші побажання"
@@ -231,12 +244,7 @@ export function NewContract() {
             <select
               required
               name="regionId"
-              defaultValue={
-                selection
-                  ? (a.regions.find((r) => r.name === selection.regionName)
-                      ?.id ?? "")
-                  : ""
-              }
+              defaultValue=""
             >
               <option value="" disabled>
                 Оберіть регіон
@@ -253,7 +261,6 @@ export function NewContract() {
               name="locationType"
               value={locationType}
               onChange={(event) => setLocationType(event.currentTarget.value as typeof locationType)}
-              disabled={!!selection}
             >
               <option value="coordinates">Координати</option>
               <option value="burial_plot">Місце на кладовищі</option>
@@ -269,6 +276,28 @@ export function NewContract() {
                 <input name="positionY" type="number" min="0" step="1" required placeholder="8" />
               </Field>
             </>
+          )}
+          {locationType === "burial_plot" && (
+            <Field label="Придбана ділянка">
+              <select
+                name="burialPlotId"
+                required
+                value={selectedPlotId}
+                onChange={(event) => setSelectedPlotId(event.currentTarget.value)}
+              >
+                <option value="">Оберіть ділянку</option>
+                {ownedPlots.map((plot) => (
+                  <option key={plot.id} value={plot.id}>
+                    {plot.cemetery.name} · {plot.cemetery.city} · місце {plot.positionX + 1}-{plot.positionY + 1}
+                  </option>
+                ))}
+              </select>
+              {plotsLoading && <small role="status">Завантаження придбаних ділянок…</small>}
+              {plotsError && <ErrorBox text={plotsError} />}
+              {!plotsLoading && !plotsError && !ownedPlots.length && (
+                <small>Придбаних ділянок поки немає.</small>
+              )}
+            </Field>
           )}
           {locationType === "address" && (
             <Field label="Адреса виконання робіт">

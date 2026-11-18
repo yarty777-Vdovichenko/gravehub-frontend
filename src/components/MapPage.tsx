@@ -91,7 +91,7 @@ export function MapPage() {
       <header className="page-title">
         <div>
           <h1>Карта кладовищ і місць</h1>
-          <p>Оберіть кладовище та вільне місце, щоб переглянути умови й оформити покупку.</p>
+          <p>Оберіть вільне місце, щоб переглянути умови й оформити покупку.</p>
         </div>
         <Link className="button secondary" to="/plots">Мої придбані місця</Link>
       </header>
@@ -138,7 +138,7 @@ export function MapPage() {
           <div className="detail-grid">
             <section className="panel detail-panel">
               <h2>Схема місць</h2>
-              <p>Оберіть вільне місце для перегляду ціни та оформлення.</p>
+              <p>Оберіть вільне місце для перегляду ціни та оформлення покупки.</p>
               {loadingPlots ? (
                 <p role="status">Завантаження місць…</p>
               ) : (
