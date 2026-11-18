@@ -219,8 +219,9 @@ export function NewContract() {
                     value={s.id}
                     checked={selectedServices.includes(s.id)}
                     onChange={(event) => {
+                      const checked = event.currentTarget.checked;
                       setSelectedServices((current) =>
-                        event.currentTarget.checked
+                        checked
                           ? [...current, s.id]
                           : current.filter((id) => id !== s.id),
                       );
