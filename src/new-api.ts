@@ -1,10 +1,5 @@
 import { api } from "./api";
-import type {
-  EmployeeSpecialization,
-  Option,
-  SelectableService,
-  ServiceCategory,
-} from "./api";
+import type { Option, SelectableService, ServiceCategory } from "./api";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -83,7 +78,7 @@ export interface Employee {
   }[];
   user: { id: string; name: string };
   regions: { id: string; name: string }[];
-  specialization: EmployeeSpecialization[];
+  specialization: { id: string; name: string }[];
 }
 export interface Cemetery {
   id: string;
@@ -173,82 +168,7 @@ export interface SearchFilters {
   limit: number;
 }
 const profiles=new Map<string,Employee>();
-function normalize(raw: unknown): Employee {
-  if (!isRecord(raw) || typeof raw.id !== "string") {
-    throw new Error("Некоректні дані виконавця");
-  }
-  const list = (value: unknown): { id: string; name: string }[] =>
-    Array.isArray(value)
-      ? value.filter(
-          (item): item is { id: string; name: string } =>
-            isRecord(item) &&
-            typeof item.id === "string" &&
-            typeof item.name === "string",
-        )
-      : [];
-  const specializations = (
-    value: unknown,
-  ): EmployeeSpecialization[] =>
-    Array.isArray(value)
-      ? value.flatMap((item) => {
-          if (
-            !isRecord(item) ||
-            typeof item.id !== "string" ||
-            typeof item.name !== "string"
-          ) {
-            return [];
-          }
-          const parent =
-            isRecord(item.parent) &&
-            typeof item.parent.id === "string" &&
-            typeof item.parent.name === "string"
-              ? { id: item.parent.id, name: item.parent.name }
-              : undefined;
-          return [
-            {
-              id: item.id,
-              name: item.name,
-              ...(parent
-                ? {
-                    parent,
-                    categoryId: parent.id,
-                    categoryName: parent.name,
-                  }
-                : {}),
-            },
-          ];
-        })
-      : [];
-  const user = isRecord(raw.user) ? raw.user : undefined;
-  const portfolio = Array.isArray(raw.portfolio)
-    ? raw.portfolio.filter(
-        (item): item is NonNullable<Employee["portfolio"]>[number] =>
-          isRecord(item) &&
-          typeof item.id === "string" &&
-          typeof item.url === "string" &&
-          (item.type === "image" || item.type === "video"),
-      )
-    : undefined;
-  return {
-    id: raw.id,
-    rating: typeof raw.rating === "number" ? raw.rating : 0,
-    reviewsCount:
-      typeof raw.reviewsCount === "number" ? raw.reviewsCount : undefined,
-    completedContracts:
-      typeof raw.completedContracts === "number" ? raw.completedContracts : 0,
-    description:
-      typeof raw.description === "string" ? raw.description : undefined,
-    portfolio,
-    user: {
-      id: typeof user?.id === "string" ? user.id : "",
-      name: typeof user?.name === "string" ? user.name : "Виконавець",
-    },
-    regions: list(raw.regions),
-    specialization: specializations(
-      raw.specialization ?? raw.specializations ?? raw.services,
-    ),
-  };
-}
+function normalize(raw:unknown):Employee{if(!raw||typeof raw!=='object'||!('id'in raw)||typeof raw.id!=='string')throw new Error('Некоректні дані виконавця');const r=raw as Record<string,unknown>;const list=(value:unknown):{id:string;name:string}[]=>Array.isArray(value)?value.filter((v):v is {id:string;name:string}=>!!v&&typeof v==='object'&&typeof v.id==='string'&&typeof v.name==='string'):[];const u=r.user as Record<string,unknown>|undefined;const portfolio=Array.isArray(r.portfolio)?r.portfolio.filter((item):item is NonNullable<Employee["portfolio"]>[number]=>!!item&&typeof item==="object"&&"id"in item&&typeof item.id==="string"&&"url"in item&&typeof item.url==="string"&&"type"in item&&(item.type==="image"||item.type==="video")):undefined;return {id:raw.id,rating:typeof r.rating==='number'?r.rating:0,reviewsCount:typeof r.reviewsCount==='number'?r.reviewsCount:undefined,completedContracts:typeof r.completedContracts==='number'?r.completedContracts:0,description:typeof r.description==="string"?r.description:undefined,portfolio,user:{id:typeof u?.id==='string'?u.id:'',name:typeof u?.name==='string'?u.name:'Виконавець'},regions:list(r.regions),specialization:list(r.specialization??r.specializations??r.services)}}
 export const newApi = {
   serviceCatalog: async () => {
     const { data } = await api.get<unknown>("/services");

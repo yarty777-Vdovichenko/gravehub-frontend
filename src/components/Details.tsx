@@ -215,13 +215,7 @@ export function Details() {
               <span>
                 <Flower2 size={18} />
                 {c.serviceTypes?.length
-                  ? c.serviceTypes
-                      .map((category) =>
-                        category.children.length
-                          ? `${category.name} (${category.children.map((service) => service.name).join(", ")})`
-                          : category.name,
-                      )
-                      .join(", ")
+                  ? c.serviceTypes.map((service) => service.name).join(", ")
                   : c.serviceType?.name ??
                     a.services.find((s) => s.id === c.serviceTypeId)?.name ??
                     "Послуга"}
@@ -318,20 +312,6 @@ export function Details() {
                         <strong>{money(p.price)}</strong>
                       </div>
                       <p>{p.comment}</p>
-                      {!!e?.specialization?.length && (
-                        <small>
-                          Послуги:{" "}
-                          {e.specialization
-                            .map((service) => {
-                              const category =
-                                service.parent?.name ?? service.categoryName;
-                              return category
-                                ? `${category}: ${service.name}`
-                                : service.name;
-                            })
-                            .join(", ")}
-                        </small>
-                      )}
                       <Badge status={p.status} />
                       {p.status === "pending" && c.status === "open" && (
                         <div className="form-actions">

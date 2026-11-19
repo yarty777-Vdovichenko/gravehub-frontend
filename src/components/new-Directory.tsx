@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useEffect,useState } from "react";
 import { Link,useNavigate,useParams } from "react-router-dom";
-import type { Option,Page,Review,ServiceCategory } from "../api";
+import type { Option,Page,Review,SelectableService } from "../api";
 import { api,configured,errorText } from "../api";
 import type {
 Employee,
@@ -13,21 +13,11 @@ import "../new-pages.css";
 import { ErrorView } from './new-ErrorView';
 import { Filters } from './new-Filters';
 import { Pager } from './new-Pager';
-
-function specializationNames(employee: Employee) {
-  return employee.specialization
-    .map((service) => {
-      const category = service.parent?.name ?? service.categoryName;
-      return category ? `${category}: ${service.name}` : service.name;
-    })
-    .join(", ");
-}
-
 export function Directory({
-  serviceCategories,
+  services,
   regions,
 }: {
-  serviceCategories: ServiceCategory[];
+  services: SelectableService[];
   regions: Option[];
 }) {
   const { id } = useParams(),
@@ -84,7 +74,7 @@ export function Directory({
       {!id && (
         <Filters
           employee
-          serviceCategories={serviceCategories}
+          services={services}
           regions={regions}
           onChange={(f, n) => {
             setFilters(f);
@@ -103,7 +93,7 @@ export function Directory({
           <p>
             {profile.reviewsCount===0?"Без відгуків":`★ ${profile.rating}`} · Виконано робіт: {profile.completedContracts}
           </p>
-          <p>{specializationNames(profile)}</p>
+          <p>{profile.specialization.map((s) => s.name).join(", ")}</p>
           <p>{profile.regions.map((s) => s.name).join(", ")}</p>
           {profile.description && <p className="employee-description">{profile.description}</p>}
           <button
@@ -178,7 +168,7 @@ export function Directory({
                   <p>
                     {x.reviewsCount===0?"Без відгуків":`★ ${x.rating}`} · {x.completedContracts} виконаних робіт
                   </p>
-                  <p>{specializationNames(x)}</p>
+                  <p>{x.specialization.map((s) => s.name).join(", ")}</p>
                   <p>{x.regions.map((s) => s.name).join(", ")}</p>
                   <b>Переглянути профіль →</b>
                 </Link>

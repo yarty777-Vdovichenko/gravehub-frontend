@@ -80,22 +80,6 @@ axios.defaults.adapter = async (config) => {
   protectedRequestCount += 1;
   if (config.headers.Authorization !== `Bearer ${jwt(currentMode)}`)
     return reject(config, 401);
-  if (config.url === "/employees/employee-1") {
-    return respond(config, {
-      id: "employee-1",
-      rating: 4.8,
-      completedContracts: 3,
-      user: { id: "user-2", name: "Виконавець" },
-      regions: [],
-      specialization: [
-        {
-          id: "service-1",
-          name: "Очищення",
-          parent: { id: "category-1", name: "Догляд" },
-        },
-      ],
-    });
-  }
   return respond(config, {
     items: [],
     meta: { page: 1, limit: 10, total: 0, pages: 0 },
@@ -173,16 +157,6 @@ try {
     currentUserRequest.headers.get("Authorization"),
     `Bearer ${jwt("customer")}`,
   );
-  const employee = await newApiModule.newApi.employee("employee-1");
-  assert.deepEqual(employee.specialization, [
-    {
-      id: "service-1",
-      name: "Очищення",
-      parent: { id: "category-1", name: "Догляд" },
-      categoryId: "category-1",
-      categoryName: "Догляд",
-    },
-  ]);
 
   await apiModule.api.get("/services");
   const role = await apiModule.api.post("/auth/roles/employee", {});
