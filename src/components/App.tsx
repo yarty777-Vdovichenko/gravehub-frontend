@@ -246,7 +246,7 @@ export function App() {
               element={
                 <Guard mode="employee">
                   <Shell>
-                    <AdvancedMarket services={services} regions={regions} />
+                    <AdvancedMarket serviceCategories={serviceCategories} regions={regions} />
                   </Shell>
                 </Guard>
               }
@@ -266,7 +266,7 @@ export function App() {
               element={
                 <Guard mode="customer">
                   <Shell>
-                    <Directory services={services} regions={regions} />
+                    <Directory serviceCategories={serviceCategories} regions={regions} />
                   </Shell>
                 </Guard>
               }
@@ -276,7 +276,7 @@ export function App() {
               element={
                 <Guard mode="customer">
                   <Shell>
-                    <Directory services={services} regions={regions} />
+                    <Directory serviceCategories={serviceCategories} regions={regions} />
                   </Shell>
                 </Guard>
               }

@@ -209,7 +209,10 @@ export function Dashboard() {
         </Link>
       </div>
       <div className="service-grid">
-        {a.services.slice(0, 4).map((s, i) => (
+        {(a.serviceCategories.length
+          ? a.serviceCategories.slice(0, 4)
+          : a.services.slice(0, 4)
+        ).map((s, i) => (
           <ServiceCard key={s.id} s={s} i={i} />
         ))}
       </div>

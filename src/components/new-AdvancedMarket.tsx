@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useEffect,useState } from "react";
 import { Link } from "react-router-dom";
-import type { Contract, Option, SelectableService } from "../api";
+import type { Contract, Option, ServiceCategory } from "../api";
 import { api,errorText } from "../api";
 import type {
 MetaPage,
@@ -13,11 +13,11 @@ import { ErrorView } from './new-ErrorView';
 import { Filters } from './new-Filters';
 import { Pager } from './new-Pager';
 export function AdvancedMarket({
-  services,
+  serviceCategories,
   regions,
   endpoint="/employee/contracts",
 }: {
-  services: SelectableService[];
+  serviceCategories: ServiceCategory[];
   regions: Option[];
   endpoint?:string;
 }) {
@@ -52,7 +52,7 @@ export function AdvancedMarket({
       <label>Статус замовлення <select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Усі статуси</option>{["open","in_progress","awaiting_confirmation","completed","cancelled"].map(st=><option key={st} value={st}>{st}</option>)}</select></label>
       <Filters
         employee={false}
-        services={services}
+        serviceCategories={serviceCategories}
         regions={regions}
         onChange={(f, n) => {
           setFilters(f);
