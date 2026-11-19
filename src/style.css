@@ -1218,6 +1218,65 @@ footer > span:last-child {
   width: 100%;
   margin-top: 8px;
 }
+.acceptance-modal {
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+.acceptance-modal > p {
+  margin: 8px 0 18px;
+  font-size: 12px;
+}
+.specification-group {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin: 12px 0;
+}
+.specification-group legend {
+  padding: 0 6px;
+  font-weight: 750;
+  color: var(--text-strong);
+}
+.specification-option {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 9px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.specification-option:has(input:checked) {
+  background: var(--surface-selected);
+}
+.specification-option input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--green);
+}
+.specification-option span {
+  display: grid;
+  gap: 3px;
+}
+.contract-specifications {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+.contract-specification {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.contract-specification p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
 .large-icon {
   width: 42px;
   height: 42px;

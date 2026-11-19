@@ -20,7 +20,8 @@ useParams
 import type {
 Contract,
 Proposal,
-Review
+Review,
+ContractSpecification
 } from "../api";
 import {
 api,
@@ -53,7 +54,10 @@ export function Details() {
     [reviews, setReviews] = useState<Review[]|undefined>(undefined),
     [reviewPage, setReviewPage] = useState(1),
     [reviewTotal, setReviewTotal] = useState(0),
-    [confirmDelete, setConfirmDelete] = useState(false);
+    [confirmDelete, setConfirmDelete] = useState(false),
+    [acceptProposal, setAcceptProposal] = useState<Proposal>(),
+    [acceptSelections, setAcceptSelections] = useState<Record<string, string>>({}),
+    [acceptNotes, setAcceptNotes] = useState<Record<string, string>>({});
   const loadVersion=useRef(0);
   const load = useCallback(async () => {
     const version=++loadVersion.current;
@@ -245,6 +249,18 @@ export function Details() {
                     : `Координати: ${c.positionX ?? "—"}, ${c.positionY ?? "—"}`}
               </span>
             </div>
+            {!!c.specifications?.length && (
+              <div className="contract-specifications">
+                <h3>Узгоджені варіанти послуг</h3>
+                {c.specifications.map((specification) => (
+                  <div className="contract-specification" key={specification.categoryId}>
+                    <b>{specification.categoryName ?? "Послуга"}</b>
+                    {specification.serviceName && <span>{specification.serviceName}</span>}
+                    {specification.note && <p>{specification.note}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
             {c.review && (
               <div className="review">
                 <b>{"★".repeat(c.review.rating)} · Відгук замовника</b>
@@ -349,13 +365,11 @@ export function Details() {
                           <button
                             disabled={busy}
                             className="button primary"
-                            onClick={() =>
-                              action(
-                                `/contracts/${id}/proposals/${p.id}/accept`,
-                                undefined,
-                                "in_progress",
-                              )
-                            }
+                            onClick={() => {
+                              setAcceptSelections({});
+                              setAcceptNotes({});
+                              setAcceptProposal(p);
+                            }}
                           >
                             Прийняти
                           </button>
@@ -481,6 +495,126 @@ export function Details() {
           )}
         </section>
       </div>
+      {acceptProposal && (
+        <div
+          className="modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setAcceptProposal(undefined);
+          }}
+        >
+          <section
+            className="panel modal acceptance-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Уточнення замовлення"
+          >
+            <button
+              autoFocus
+              aria-label="Закрити"
+              className="close"
+              onClick={() => setAcceptProposal(undefined)}
+            >
+              <X />
+            </button>
+            <h2>Уточніть вибір послуг</h2>
+            <p>Оберіть конкретний варіант для кожної послуги виконавця.</p>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const employee = acceptProposal.employeeProfile ?? acceptProposal.employee;
+                const selections = (c?.serviceTypes ?? []).map((category) => ({
+                  categoryId: category.id,
+                  serviceId: acceptSelections[category.id] || undefined,
+                  note: acceptNotes[category.id]?.trim() || undefined,
+                })).filter((selection, index, all) => {
+                  if (selection.serviceId || selection.note) return true;
+                  const category = c?.serviceTypes?.[index];
+                  const hasOptions = !!employee?.specialization?.some(
+                    (service) => (service.parent?.id ?? service.categoryId) === category?.id,
+                  );
+                  return !hasOptions;
+                });
+                const missing = (c?.serviceTypes ?? []).some((category) => {
+                  const hasOptions = !!employee?.specialization?.some(
+                    (service) => (service.parent?.id ?? service.categoryId) === category.id,
+                  );
+                  return hasOptions && !acceptSelections[category.id];
+                });
+                if (missing) {
+                  a.notice("Оберіть варіант для кожної послуги.");
+                  return;
+                }
+                action(
+                  `/contracts/${id}/proposals/${acceptProposal.id}/accept`,
+                  { selections },
+                  "in_progress",
+                ).finally(() => setAcceptProposal(undefined));
+              }}
+            >
+              {(c?.serviceTypes ?? []).map((category) => {
+                const employee = acceptProposal.employeeProfile ?? acceptProposal.employee;
+                const options = employee?.specialization?.filter(
+                  (service) => (service.parent?.id ?? service.categoryId) === category.id,
+                ) ?? [];
+                return (
+                  <fieldset className="specification-group" key={category.id}>
+                    <legend>{category.name}</legend>
+                    {options.length ? (
+                      options.map((service) => (
+                        <label className="specification-option" key={service.id}>
+                          <input
+                            type="radio"
+                            name={`service-${category.id}`}
+                            value={service.id}
+                            checked={acceptSelections[category.id] === service.id}
+                            onChange={() =>
+                              setAcceptSelections((current) => ({
+                                ...current,
+                                [category.id]: service.id,
+                              }))
+                            }
+                          />
+                          <span>
+                            <b>{service.name}</b>
+                            {service.description && <small>{service.description}</small>}
+                          </span>
+                        </label>
+                      ))
+                    ) : (
+                      <p>Виконавець не надав окремих варіантів для цієї категорії.</p>
+                    )}
+                    <Field label="Побажання або деталі (необов’язково)">
+                      <textarea
+                        rows={2}
+                        maxLength={500}
+                        value={acceptNotes[category.id] ?? ""}
+                        onChange={(event) =>
+                          setAcceptNotes((current) => ({
+                            ...current,
+                            [category.id]: event.currentTarget.value,
+                          }))
+                        }
+                      />
+                    </Field>
+                  </fieldset>
+                );
+              })}
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setAcceptProposal(undefined)}
+                >
+                  Скасувати
+                </button>
+                <button type="submit" className="button primary" disabled={busy}>
+                  Прийняти виконавця
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
       {reviewFor && (
         <div className="modal-backdrop" onClick={e=>{if(e.target===e.currentTarget)setReviewFor(undefined)}}>
           <section className="panel modal" role="dialog" aria-modal="true" aria-label="Відгуки виконавця" onKeyDown={e=>{if(e.key==='Escape')setReviewFor(undefined);if(e.key==='Tab'){const nodes=e.currentTarget.querySelectorAll<HTMLElement>('button,a,input,select,textarea,[tabindex="0"]');const first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}}}>
