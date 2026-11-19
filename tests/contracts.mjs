@@ -13,6 +13,15 @@ await build({
   external: ["axios"],
   define: { "import.meta.env.VITE_API_URL": '"https://api.test"' },
 });
+await build({
+  entryPoints: ["src/new-api.ts"],
+  outfile: ".test-tmp/new-api.mjs",
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  external: ["axios"],
+  define: { "import.meta.env.VITE_API_URL": '"https://api.test"' },
+});
 
 const jwt = (role) =>
   "header." +
@@ -79,6 +88,47 @@ axios.defaults.adapter = async (config) => {
 
 try {
   const apiModule = await import("../.test-tmp/api.mjs");
+  const newApiModule = await import("../.test-tmp/new-api.mjs");
+  const serviceCatalog = newApiModule.normalizeServiceCatalog([
+    {
+      id: "category-1",
+      name: "Догляд",
+      children: [
+        {
+          id: "service-1",
+          name: "Очищення",
+          description: "Догляд за пам’ятником",
+          price: 250,
+        },
+      ],
+    },
+  ]);
+  assert.deepEqual(serviceCatalog,
+    [
+      {
+        id: "category-1",
+        name: "Догляд",
+        children: [
+          {
+            id: "service-1",
+            name: "Очищення",
+            description: "Догляд за пам’ятником",
+            price: 250,
+            categoryId: "category-1",
+            categoryName: "Догляд",
+          },
+        ],
+      },
+    ],
+  );
+  assert.deepEqual(
+    newApiModule.flattenServiceCatalog(serviceCatalog).map((service) => service.id),
+    ["service-1"],
+  );
+  assert.throws(
+    () => newApiModule.normalizeServiceCatalog([{ id: "category-1" }]),
+    /некоректний каталог послуг/,
+  );
   let current;
   apiModule.listenSession((session) => (current = session));
   apiModule.applySession({
@@ -130,7 +180,7 @@ try {
   await assert.rejects(apiModule.api.get("/contracts/my"));
   assert.equal(current, null);
   console.log(
-    "PASS: refresh, full roles/profile, auth headers, retry, pagination, login errors, and session expiry",
+    "PASS: auth/session behavior and nested service catalog normalization",
   );
 } finally {
   await rm(".test-tmp", { recursive: true, force: true });

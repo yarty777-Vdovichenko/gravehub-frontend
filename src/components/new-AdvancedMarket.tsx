@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useEffect,useState } from "react";
 import { Link } from "react-router-dom";
-import type { Contract,Option } from "../api";
+import type { Contract, Option, SelectableService } from "../api";
 import { api,errorText } from "../api";
 import type {
 MetaPage,
@@ -17,7 +17,7 @@ export function AdvancedMarket({
   regions,
   endpoint="/employee/contracts",
 }: {
-  services: Option[];
+  services: SelectableService[];
   regions: Option[];
   endpoint?:string;
 }) {

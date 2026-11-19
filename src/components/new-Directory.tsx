@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useEffect,useState } from "react";
 import { Link,useNavigate,useParams } from "react-router-dom";
-import type { Option,Page,Review } from "../api";
+import type { Option,Page,Review,SelectableService } from "../api";
 import { api,configured,errorText } from "../api";
 import type {
 Employee,
@@ -17,7 +17,7 @@ export function Directory({
   services,
   regions,
 }: {
-  services: Option[];
+  services: SelectableService[];
   regions: Option[];
 }) {
   const { id } = useParams(),
