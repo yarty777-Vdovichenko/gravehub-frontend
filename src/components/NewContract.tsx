@@ -11,9 +11,11 @@ Link,
 useNavigate
 } from "react-router-dom";
 import type {
+ContractEstimate,
 Contract,
 ContractInput,
-SelectableService
+SelectableService,
+ServiceCategory
 } from "../api";
 import {
 api,
@@ -42,7 +44,7 @@ export function NewContract() {
       const service = new URLSearchParams(window.location.search).get("service");
       return service ? [service] : [];
     }),
-    [estimate, setEstimate] = useState<number>(),
+    [estimate, setEstimate] = useState<ContractEstimate>(),
     [estimateError, setEstimateError] = useState(""),
     [budget, setBudget] = useState("");
   useEffect(() => {
@@ -70,28 +72,75 @@ export function NewContract() {
     };
   }, [a.demo, locationType]);
   useEffect(() => {
+    if (a.servicesLoading) {
+      setEstimate(undefined);
+      setEstimateError("");
+      return;
+    }
+
+    if (!a.demo && a.servicesError) {
+      setEstimate(undefined);
+      setEstimateError(a.servicesError);
+      return;
+    }
+
     if (!selectedServices.length) {
       setEstimate(undefined);
       setEstimateError("");
       return;
     }
 
+    if (
+      !a.demo &&
+      (!a.serviceCategories.length ||
+        selectedServices.some(
+          (id) => !a.serviceCategories.some((category) => category.id === id),
+        ))
+    ) {
+      setEstimate(undefined);
+      setEstimateError("");
+      return;
+    }
+
     if (a.demo) {
-      setEstimate(
-        a.services
-          .filter((service) => selectedServices.includes(service.id))
-          .reduce((total, service) => total + (service.price ?? 0), 0),
+      const selectedCategories = a.serviceCategories.filter((category) =>
+        selectedServices.includes(category.id),
       );
+      const ranges = selectedCategories.length
+        ? selectedCategories.map((category) => {
+            const prices = category.children.map((service) => service.price ?? 0);
+            return {
+              id: category.id,
+              name: category.name,
+              minPrice: prices.length ? Math.min(...prices) : 0,
+              maxPrice: prices.length ? Math.max(...prices) : 0,
+            };
+          })
+        : a.services
+            .filter((service) => selectedServices.includes(service.id))
+            .map((service) => ({
+              id: service.id,
+              name: service.name,
+              minPrice: service.price ?? 0,
+              maxPrice: service.price ?? 0,
+            }));
+      setEstimate({
+        services: ranges,
+        minEstimatedPrice: ranges.reduce((sum, item) => sum + item.minPrice, 0),
+        maxEstimatedPrice: ranges.reduce((sum, item) => sum + item.maxPrice, 0),
+      });
       return;
     }
 
     const controller = new AbortController();
     setEstimateError("");
     api
-      .post<{ estimatedPrice: number }>("/contracts/estimate", {
-        serviceTypeIds: selectedServices,
-      }, { signal: controller.signal })
-      .then(({ data }) => setEstimate(data.estimatedPrice))
+      .post<ContractEstimate>(
+        "/contracts/estimate",
+        { serviceTypeIds: selectedServices },
+        { signal: controller.signal },
+      )
+      .then(({ data }) => setEstimate(data))
       .catch((e: unknown) => {
         if (!controller.signal.aborted) {
           setEstimate(undefined);
@@ -99,7 +148,38 @@ export function NewContract() {
         }
       });
     return () => controller.abort();
-  }, [selectedServices, a.demo, a.services]);
+  }, [
+    selectedServices,
+    a.demo,
+    a.services,
+    a.serviceCategories,
+    a.servicesLoading,
+    a.servicesError,
+  ]);
+  useEffect(() => {
+    if (a.servicesLoading || !a.serviceCategories.length) return;
+    const categoryIds = new Set(a.serviceCategories.map((category) => category.id));
+    const childCategories = new Map(
+      a.serviceCategories.flatMap((category) =>
+        category.children.map((service) => [service.id, category.id] as const),
+      ),
+    );
+    setSelectedServices((current) => {
+      const next = Array.from(
+        new Set(
+          current
+            .map((id) =>
+              categoryIds.has(id) ? id : childCategories.get(id),
+            )
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      return next.length === current.length &&
+        next.every((id, index) => id === current[index])
+        ? current
+        : next;
+    });
+  }, [a.servicesLoading, a.serviceCategories]);
   const selectedOwnedPlot = ownedPlots.find((plot) => plot.id === selectedPlotId);
   const renderService = (service: SelectableService) => (
     <label className="service-checkbox" key={service.id}>
@@ -124,6 +204,33 @@ export function NewContract() {
       {service.price !== undefined && (
         <strong>{service.price.toLocaleString("uk-UA")} ₴</strong>
       )}
+    </label>
+  );
+  const renderCategory = (category: ServiceCategory) => (
+    <label className="service-checkbox" key={category.id}>
+      <input
+        type="checkbox"
+        name="serviceTypeIds"
+        value={category.id}
+        checked={selectedServices.includes(category.id)}
+        onChange={(event) => {
+          const checked = event.currentTarget.checked;
+          setSelectedServices((current) =>
+            checked
+              ? [...current, category.id]
+              : current.filter((id) => id !== category.id),
+          );
+        }}
+      />
+      <span>
+        <b>{category.name}</b>
+        {category.description && <small>{category.description}</small>}
+        {!!category.children.length && (
+          <small>
+            Включає: {category.children.map((service) => service.name).join(", ")}
+          </small>
+        )}
+      </span>
     </label>
   );
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -180,7 +287,13 @@ export function NewContract() {
           id: demoUuid(),
           status: "open",
           region: a.regions.find((r) => r.id === body.regionId),
-          serviceTypes: a.services.filter((s) => body.serviceTypeIds.includes(s.id)),
+          serviceTypes: a.serviceCategories.length
+            ? a.serviceCategories.filter((category) =>
+                body.serviceTypeIds.includes(category.id),
+              )
+            : a.services
+                .filter((service) => body.serviceTypeIds.includes(service.id))
+                .map((service) => ({ ...service, children: [] })),
           proposalsCount: 0,
         };
         a.setContracts((cs) => [c, ...cs]);
@@ -238,31 +351,24 @@ export function NewContract() {
           <div className="field">
             <span>Послуги</span>
             {a.serviceCategories.length ? (
-              a.serviceCategories.map((category) => (
-                <fieldset className="service-category-options" key={category.id}>
-                  <legend>{category.name}</legend>
-                  {category.description && <p>{category.description}</p>}
-                  <div
-                    className="service-checkboxes"
-                    role="group"
-                    aria-label={`Послуги: ${category.name}`}
-                  >
-                    {category.children.map(renderService)}
-                  </div>
-                </fieldset>
-              ))
+              <div className="service-checkboxes" role="group" aria-label="Категорії послуг">
+                {a.serviceCategories.map(renderCategory)}
+              </div>
             ) : (
               <div className="service-checkboxes" role="group" aria-label="Послуги">
-                {a.services.map(renderService)}
+                {a.demo && a.services.map(renderService)}
               </div>
             )}
             {a.servicesLoading && (
               <small role="status">Завантаження послуг…</small>
             )}
             {a.servicesError && <ErrorBox text={a.servicesError} />}
-            {!a.servicesLoading && !a.servicesError && !a.services.length && (
+            {!a.servicesLoading &&
+              !a.servicesError &&
+              !a.serviceCategories.length &&
+              (!a.demo || !a.services.length) && (
               <small>Список послуг порожній. Попросіть адміністратора заповнити послуги.</small>
-            )}
+              )}
           </div>
           <Field label="Регіон">
             <select
@@ -362,15 +468,18 @@ export function NewContract() {
         <div className="estimate-box" aria-live="polite">
           {estimate !== undefined && (
             <>
-              <span>Орієнтовна вартість вибраних послуг</span>
-              <strong>{estimate.toLocaleString("uk-UA")} ₴</strong>
-              <button
-                type="button"
-                className="link-button"
-                onClick={() => setBudget(String(estimate))}
-              >
-                Встановити бюджет
-              </button>
+              <span>Орієнтовний діапазон вартості послуг</span>
+              <strong>
+                {estimate.minEstimatedPrice.toLocaleString("uk-UA")}–{estimate.maxEstimatedPrice.toLocaleString("uk-UA")} ₴
+              </strong>
+              <ul>
+                {estimate.services.map((service) => (
+                  <li key={service.id}>
+                    {service.name}: {service.minPrice.toLocaleString("uk-UA")}–{service.maxPrice.toLocaleString("uk-UA")} ₴
+                  </li>
+                ))}
+              </ul>
+              <small>Бюджет замовлення вкажіть самостійно.</small>
             </>
           )}
           {estimateError && <p className="error">{estimateError}</p>}

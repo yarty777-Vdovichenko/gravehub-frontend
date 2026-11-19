@@ -1,17 +1,17 @@
 import { useState } from "react";
-import type { Option, SelectableService } from "../api";
+import type { Option, ServiceCategory } from "../api";
 import type {
 SearchFilters
 } from "../new-api";
 import "../new-pages.css";
 import { ErrorView } from './new-ErrorView';
 export function Filters({
-  services,
+  serviceCategories,
   regions,
   employee,
   onChange,
 }: {
-  services: SelectableService[];
+  serviceCategories: ServiceCategory[];
   regions: Option[];
   employee: boolean;
   onChange: (f: Omit<SearchFilters, "page" | "limit">, limit: number) => void;
@@ -69,9 +69,9 @@ export function Filters({
       </select>
       <select name="serviceId" aria-label="Послуга">
         <option value="">Усі послуги</option>
-        {services.map((x) => (
+        {serviceCategories.map((x) => (
           <option key={x.id} value={x.id}>
-            {x.categoryName ? `${x.categoryName} · ${x.name}` : x.name}
+            {x.name}
           </option>
         ))}
       </select>

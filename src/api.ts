@@ -8,6 +8,7 @@ export interface Profile {
   reviewsCount?: number;
   completedContracts?: number;
   user?: { name: string };
+  specialization?: EmployeeSpecialization[];
 }
 export interface User {
   id: string;
@@ -46,8 +47,16 @@ export interface SelectableService extends Option {
   categoryId?: string;
   categoryName?: string;
 }
+export interface EmployeeSpecialization extends SelectableService {
+  parent?: Pick<Option, "id" | "name"> | null;
+}
 export interface ServiceCategory extends Option {
   children: SelectableService[];
+}
+export interface ContractEstimate {
+  services: { id: string; name: string; minPrice: number; maxPrice: number }[];
+  minEstimatedPrice: number;
+  maxEstimatedPrice: number;
 }
 export interface Review {
   id: string;
@@ -61,7 +70,7 @@ export interface Contract {
   title: string;
   description: string;
   serviceTypeId?: string;
-  serviceTypes?: Option[];
+  serviceTypes?: ServiceCategory[];
   regionId: string;
   locationType?: "coordinates" | "burial_plot" | "address";
   positionX?: number | null;

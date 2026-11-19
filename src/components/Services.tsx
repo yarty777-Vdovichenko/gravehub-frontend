@@ -16,21 +16,11 @@ export function Services() {
       {a.servicesLoading ? (
         <p role="status">Завантаження послуг…</p>
       ) : a.serviceCategories.length ? (
-        a.serviceCategories.map((category, categoryIndex) => (
-          <section className="panel detail-panel" key={category.id}>
-            <h2>{category.name}</h2>
-            {category.description && <p>{category.description}</p>}
-            <div className="service-grid full">
-              {category.children.map((service, serviceIndex) => (
-                <ServiceCard
-                  s={service}
-                  i={categoryIndex + serviceIndex}
-                  key={service.id}
-                />
-              ))}
-            </div>
-          </section>
-        ))
+        <div className="service-grid full">
+          {a.serviceCategories.map((category, index) => (
+            <ServiceCard s={category} i={index} key={category.id} />
+          ))}
+        </div>
       ) : (
         <>
           <div className="service-grid full">
