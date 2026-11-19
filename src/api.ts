@@ -83,7 +83,6 @@ export interface Contract {
     positionY: number;
     cemetery: { id: string; name: string; city: string };
   } | null;
-  specifications?: ContractSpecification[] | null;
   date: string;
   budget: number;
   status: string;
@@ -94,13 +93,6 @@ export interface Contract {
   review?: Review | null;
   proposalsCount?: number;
   _count?: { proposals: number };
-}
-export interface ContractSpecification {
-  categoryId: string;
-  categoryName?: string;
-  serviceId?: string;
-  serviceName?: string;
-  note?: string;
 }
 export interface Proposal {
   id: string;
