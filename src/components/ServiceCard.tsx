@@ -21,7 +21,15 @@ export function ServiceCard({ s, i }: { s: SelectableService; i: number }) {
         {i % 2 ? <Flower2 /> : <Leaf />}
         <ArrowUpRight size={17} />
       </div>
-      {s.categoryName && <small>{s.categoryName}</small>}
+      {(s.path?.length
+        ? s.path.slice(0, -1).map((part) => part.name).join(" / ")
+        : s.categoryName) && (
+        <small>
+          {s.path?.length
+            ? s.path.slice(0, -1).map((part) => part.name).join(" / ")
+            : s.categoryName}
+        </small>
+      )}
       <h3>{s.name}</h3>
       <p>{s.description ?? descriptions[i % 4]}</p>
     </Link>

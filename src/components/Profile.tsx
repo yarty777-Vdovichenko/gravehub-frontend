@@ -47,6 +47,7 @@ export function Profile() {
         {a.session?.user.roles.includes("employee") && a.mode === "employee" && (
           <EmployeeProfileEditor
             services={a.services}
+            serviceCategories={a.serviceCategories}
             regions={a.regions}
             servicesLoading={a.servicesLoading}
             servicesError={a.servicesError}
@@ -81,6 +82,7 @@ export function Profile() {
             <h3>Стати виконавцем</h3>
             <EmployeeFields
               services={a.services}
+              serviceCategories={a.serviceCategories}
               servicesLoading={a.servicesLoading}
               servicesError={a.servicesError}
               regions={a.regions}

@@ -3,6 +3,7 @@ import { useEffect,useMemo,useState } from "react";
 import { Link,useSearchParams } from "react-router-dom";
 import type { Contract, Option, SelectableService } from "../api";
 import { api,errorText } from "../api";
+import { servicePathLabel } from "../new-api";
 import type {
 MetaPage,
 } from "../new-api";
@@ -88,7 +89,7 @@ export function AdvancedMarket({
                   <div>
                     <h3>{c.title}</h3>
                     <p>
-                      {c.region?.name} · {(c.serviceTypes?.map((service) => service.name).join(", ") || c.serviceType?.name)}
+                      {c.region?.name} · {(c.serviceTypes?.map((service) => servicePathLabel(services, service.id, service.name)).join(", ") || c.serviceType?.name)}
                     </p>
                   </div>
                   <b>{cash(c.budget)}</b>

@@ -5,58 +5,103 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function normalizeServiceOption(value: unknown): Option {
+function normalizeServiceOption(value: unknown): Option & {
+  parentId?: string | null;
+} {
+  const price = isRecord(value) ? value.price : undefined;
+  const parentId = isRecord(value) ? value.parentId : undefined;
   if (
     !isRecord(value) ||
     typeof value.id !== "string" ||
     typeof value.name !== "string" ||
     (value.description !== undefined &&
       typeof value.description !== "string") ||
-    (value.price !== undefined &&
-      (typeof value.price !== "number" || !Number.isFinite(value.price)))
+    (price !== undefined &&
+      price !== null &&
+      (typeof price !== "number" || !Number.isFinite(price))) ||
+    (parentId !== undefined &&
+      parentId !== null &&
+      typeof parentId !== "string")
   ) {
     throw new Error("Сервер повернув некоректний каталог послуг.");
   }
-  return {
+  const normalized: Option & { parentId?: string | null } = {
     id: value.id,
     name: value.name,
     ...(typeof value.description === "string"
       ? { description: value.description }
       : {}),
-    ...(typeof value.price === "number" ? { price: value.price } : {}),
   };
+  if (price === null || typeof price === "number") normalized.price = price;
+  if (parentId === null || typeof parentId === "string") {
+    normalized.parentId = parentId;
+  }
+  return normalized;
 }
 
 export function normalizeServiceCatalog(value: unknown): ServiceCategory[] {
   if (!Array.isArray(value)) {
     throw new Error("Сервер повернув некоректний каталог послуг.");
   }
-  return value.map((rawCategory) => {
-    if (!isRecord(rawCategory) || !Array.isArray(rawCategory.children)) {
+  const normalizeNode = (
+    rawNode: unknown,
+    ancestors: { id: string; name: string }[],
+  ): ServiceCategory => {
+    if (!isRecord(rawNode)) {
       throw new Error("Сервер повернув некоректний каталог послуг.");
     }
-    const category = normalizeServiceOption(rawCategory);
-    const children: SelectableService[] = rawCategory.children.map(
-      (rawService) => {
-        const service = normalizeServiceOption(rawService);
-        if (typeof service.price !== "number") {
-          throw new Error("Сервер повернув некоректний каталог послуг.");
-        }
-        return {
-          ...service,
-          categoryId: category.id,
-          categoryName: category.name,
-        };
-      },
-    );
-    return { ...category, children };
-  });
+    const node = normalizeServiceOption(rawNode);
+    if (
+      rawNode.children !== undefined &&
+      !Array.isArray(rawNode.children)
+    ) {
+      throw new Error("Сервер повернув некоректний каталог послуг.");
+    }
+    const path = [...ancestors, { id: node.id, name: node.name }];
+    const root = path[0];
+    const children = Array.isArray(rawNode.children)
+      ? rawNode.children.map((child) => normalizeNode(child, path))
+      : [];
+    return {
+      ...node,
+      categoryId: root.id,
+      categoryName: root.name,
+      path,
+      children,
+    };
+  };
+  return value.map((rawNode) => normalizeNode(rawNode, []));
 }
 
 export function flattenServiceCatalog(
   categories: ServiceCategory[],
 ): SelectableService[] {
-  return categories.flatMap((category) => category.children);
+  const services: SelectableService[] = [];
+  const visit = (node: SelectableService) => {
+    const children = node.children ?? [];
+    if (!children.length) {
+      services.push(node);
+      return;
+    }
+    children.forEach(visit);
+  };
+  categories.forEach(visit);
+  return services;
+}
+
+export function servicePathLabel(
+  services: SelectableService[],
+  serviceId: string,
+  fallbackName?: string,
+) {
+  const service = services.find((item) => item.id === serviceId);
+  if (service?.path?.length) {
+    return service.path.map((part) => part.name).join(" / ");
+  }
+  if (service?.categoryName) {
+    return `${service.categoryName} / ${service.name}`;
+  }
+  return service?.name ?? fallbackName ?? serviceId;
 }
 
 export interface MetaPage<T> {

@@ -175,6 +175,7 @@ export function Auth({ register = false }: { register?: boolean }) {
             {register && role === "employee" && (
               <EmployeeFields
                 services={a.services}
+                serviceCategories={a.serviceCategories}
                 servicesLoading={a.servicesLoading}
                 servicesError={a.servicesError}
                 regions={a.regions}

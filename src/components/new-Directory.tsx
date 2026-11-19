@@ -8,6 +8,7 @@ Employee,
 MetaPage
 } from "../new-api";
 import { newApi } from "../new-api";
+import { servicePathLabel } from "../new-api";
 import "../new-pages.css";
 import { ErrorView } from './new-ErrorView';
 import { Filters } from './new-Filters';
@@ -109,7 +110,15 @@ export function Directory({
           <p>
             {profile.reviewsCount===0?"Без відгуків":`★ ${profile.rating}`} · Виконано робіт: {profile.completedContracts}
           </p>
-          <p>{profile.specialization.map((s) => s.name).join(", ")}</p>
+          {!!profile.specialization.length && (
+            <div className="employee-specializations" aria-label="Спеціалізації">
+              {profile.specialization.map((service) => (
+                <span className="employee-specialization-tag" key={service.id}>
+                  {servicePathLabel(services, service.id, service.name)}
+                </span>
+              ))}
+            </div>
+          )}
           <p>{profile.regions.map((s) => s.name).join(", ")}</p>
           {profile.description && <p className="employee-description">{profile.description}</p>}
           <button
@@ -184,7 +193,15 @@ export function Directory({
                   <p>
                     {x.reviewsCount===0?"Без відгуків":`★ ${x.rating}`} · {x.completedContracts} виконаних робіт
                   </p>
-                  <p>{x.specialization.map((s) => s.name).join(", ")}</p>
+                  {!!x.specialization.length && (
+                    <div className="employee-specializations" aria-label="Спеціалізації">
+                      {x.specialization.map((service) => (
+                        <span className="employee-specialization-tag" key={service.id}>
+                          {servicePathLabel(services, service.id, service.name)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <p>{x.regions.map((s) => s.name).join(", ")}</p>
                   <b>Переглянути профіль →</b>
                 </Link>

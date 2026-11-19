@@ -8,6 +8,7 @@ export interface Profile {
   reviewsCount?: number;
   completedContracts?: number;
   user?: { name: string };
+  specialization?: { id: string; name: string }[];
 }
 export interface User {
   id: string;
@@ -40,14 +41,21 @@ export interface Option {
   id: string;
   name: string;
   description?: string;
-  price?: number;
+  price?: number | null;
 }
 export interface SelectableService extends Option {
+  parentId?: string | null;
+  children?: SelectableService[];
   categoryId?: string;
   categoryName?: string;
+  path?: { id: string; name: string }[];
 }
 export interface ServiceCategory extends Option {
   children: SelectableService[];
+  parentId?: string | null;
+  categoryId?: string;
+  categoryName?: string;
+  path?: { id: string; name: string }[];
 }
 export interface Review {
   id: string;

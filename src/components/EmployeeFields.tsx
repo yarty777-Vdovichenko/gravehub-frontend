@@ -1,8 +1,12 @@
+import { useState } from "react";
 import type { Option, SelectableService } from "../api";
+import type { ServiceCategory } from "../api";
 import "../style.css";
 import { Field } from './Field';
+import { ServiceTreePicker } from "./ServiceTreePicker";
 export function EmployeeFields({
   services,
+  serviceCategories,
   servicesLoading,
   servicesError,
   regions,
@@ -11,6 +15,7 @@ export function EmployeeFields({
   retryRegions,
 }: {
   services: SelectableService[];
+  serviceCategories: ServiceCategory[];
   servicesLoading: boolean;
   servicesError: string;
   regions: Option[];
@@ -18,6 +23,7 @@ export function EmployeeFields({
   regionsError: string;
   retryRegions: () => void;
 }) {
+  const [specializationIds, setSpecializationIds] = useState<string[]>([]);
   return (
     <>
       <Field label="Про ваш досвід">
@@ -36,12 +42,14 @@ export function EmployeeFields({
         ) : servicesError ? (
           <p className="catalog-state error">{servicesError}</p>
         ) : services.length ? (
-          services.map((s) => (
-            <label className="checkbox" key={s.id}>
-              <input type="checkbox" name="specializationIds" value={s.id} />
-              {s.categoryName ? `${s.categoryName} · ${s.name}` : s.name}
-            </label>
-          ))
+          <ServiceTreePicker
+            categories={serviceCategories}
+            services={services}
+            mode="employee"
+            selectedIds={specializationIds}
+            onChange={setSpecializationIds}
+            name="specializationIds"
+          />
         ) : (
           <p className="catalog-state error">Послуги наразі недоступні.</p>
         )}

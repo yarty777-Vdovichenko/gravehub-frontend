@@ -11,6 +11,7 @@ api,
 errorText,
 pageGet
 } from "../api";
+import { servicePathLabel } from "../new-api";
 import "../style.css";
 import { Badge } from './Badge';
 import { Empty } from './Empty';
@@ -99,6 +100,20 @@ export function Proposals() {
             <div className="proposal" key={p.id}>
               <div>
                 <h3>{p.contract?.title ?? "Замовлення"}</h3>
+                {!!p.contract?.serviceTypes?.length && (
+                  <p>
+                    Послуги:{" "}
+                    {p.contract.serviceTypes
+                      .map((service) =>
+                        servicePathLabel(
+                          a.services,
+                          service.id,
+                          service.name,
+                        ),
+                      )
+                      .join(", ")}
+                  </p>
+                )}
               </div>
               <Badge status={p.status} />
               <p>{p.comment}</p>

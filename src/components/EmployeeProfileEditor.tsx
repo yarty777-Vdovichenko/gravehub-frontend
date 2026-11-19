@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
 import type { Employee } from "../new-api";
-import { api, errorText, type Option, type SelectableService } from "../api";
+import { api, errorText, type Option, type SelectableService, type ServiceCategory } from "../api";
+import { normalizeServiceSelection } from "../service-selection";
 import "../style.css";
 import { ErrorBox } from "./ErrorBox";
+import { ServiceTreePicker } from "./ServiceTreePicker";
 
 type EmployeeProfile = Employee & { description: string };
 
 export function EmployeeProfileEditor({
   services,
+  serviceCategories,
   regions,
   servicesLoading,
   servicesError,
 }: {
   services: SelectableService[];
+  serviceCategories: ServiceCategory[];
   regions: Option[];
   servicesLoading: boolean;
   servicesError: string;
@@ -25,6 +29,17 @@ export function EmployeeProfileEditor({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (servicesLoading || servicesError || !services.length) return;
+    setSpecializationIds((current) => {
+      const next = normalizeServiceSelection(current, services);
+      return next.length === current.length &&
+        next.every((id, index) => id === current[index])
+        ? current
+        : next;
+    });
+  }, [services, servicesLoading, servicesError, specializationIds]);
 
   useEffect(() => {
     let active = true;
@@ -152,18 +167,14 @@ export function EmployeeProfileEditor({
               ) : !services.length ? (
                 <p className="error">Послуги наразі недоступні.</p>
               ) : null}
-              {services.map((service) => (
-                <label className="checkbox" key={service.id}>
-                  <input
-                    type="checkbox"
-                    checked={specializationIds.includes(service.id)}
-                    onChange={() => toggleValue(service.id, specializationIds, setSpecializationIds)}
-                  />
-                  {service.categoryName
-                    ? `${service.categoryName} · ${service.name}`
-                    : service.name}
-                </label>
-              ))}
+              <ServiceTreePicker
+                categories={serviceCategories}
+                services={services}
+                mode="employee"
+                selectedIds={specializationIds}
+                onChange={setSpecializationIds}
+                name="specializationIds"
+              />
             </fieldset>
             <fieldset>
               <legend>Регіони роботи</legend>

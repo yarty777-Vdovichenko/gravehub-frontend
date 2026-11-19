@@ -77,7 +77,11 @@ export function Filters({
         <option value="">Усі послуги</option>
         {services.map((x) => (
           <option key={x.id} value={x.id}>
-            {x.categoryName ? `${x.categoryName} · ${x.name}` : x.name}
+            {x.path?.length
+              ? x.path.map((part) => part.name).join(" / ")
+              : x.categoryName
+                ? `${x.categoryName} / ${x.name}`
+                : x.name}
           </option>
         ))}
       </select>

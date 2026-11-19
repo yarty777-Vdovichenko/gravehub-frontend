@@ -29,6 +29,13 @@ await build({
   platform: "node",
   format: "esm",
 });
+await build({
+  entryPoints: ["src/service-selection.ts"],
+  outfile: ".test-tmp/service-selection.mjs",
+  bundle: true,
+  platform: "node",
+  format: "esm",
+});
 
 const jwt = (role) =>
   "header." +
@@ -97,6 +104,7 @@ try {
   const apiModule = await import("../.test-tmp/api.mjs");
   const newApiModule = await import("../.test-tmp/new-api.mjs");
   const listQueryModule = await import("../.test-tmp/list-query.mjs");
+  const serviceSelection = await import("../.test-tmp/service-selection.mjs");
   const parsedListQuery = listQueryModule.parseListQuery(
     new URLSearchParams(
       "search=cleaning&serviceId=service-1&regionId=region-1&minRating=4&page=3&limit=20&sortBy=completedContracts&order=asc",
@@ -140,41 +148,119 @@ try {
   const serviceCatalog = newApiModule.normalizeServiceCatalog([
     {
       id: "category-1",
-      name: "Догляд",
+      name: "Благоустрій",
+      price: null,
+      parentId: null,
       children: [
         {
-          id: "service-1",
-          name: "Очищення",
-          description: "Догляд за пам’ятником",
-          price: 250,
+          id: "cleaning",
+          name: "Прибирання могил",
+          price: null,
+          parentId: "category-1",
+          children: [
+            {
+              id: "wet-cleaning",
+              name: "Вологе прибирання",
+              price: 250,
+              parentId: "cleaning",
+            },
+            {
+              id: "dry-cleaning",
+              name: "Сухе прибирання",
+              price: 150,
+              parentId: "cleaning",
+            },
+          ],
+        },
+        {
+          id: "fence-installation",
+          name: "Встановлення огорожі",
+          price: null,
+          parentId: "category-1",
+          children: [
+            {
+              id: "fence",
+              name: "Паркан",
+              price: null,
+              parentId: "fence-installation",
+              children: [
+                {
+                  id: "wood-fence",
+                  name: "Дерев’яний паркан",
+                  price: 500,
+                  parentId: "fence",
+                },
+                {
+                  id: "metal-fence",
+                  name: "Металевий паркан",
+                  price: 800,
+                  parentId: "fence",
+                },
+              ],
+            },
+          ],
         },
       ],
     },
   ]);
-  assert.deepEqual(serviceCatalog,
-    [
-      {
-        id: "category-1",
-        name: "Догляд",
-        children: [
-          {
-            id: "service-1",
-            name: "Очищення",
-            description: "Догляд за пам’ятником",
-            price: 250,
-            categoryId: "category-1",
-            categoryName: "Догляд",
-          },
-        ],
-      },
-    ],
-  );
   assert.deepEqual(
     newApiModule.flattenServiceCatalog(serviceCatalog).map((service) => service.id),
-    ["service-1"],
+    ["wet-cleaning", "dry-cleaning", "wood-fence", "metal-fence"],
+  );
+  const terminalServices = newApiModule.flattenServiceCatalog(serviceCatalog);
+  assert.deepEqual(
+    terminalServices.find((service) => service.id === "metal-fence").path.map(
+      (item) => item.name,
+    ),
+    [
+      "Благоустрій",
+      "Встановлення огорожі",
+      "Паркан",
+      "Металевий паркан",
+    ],
+  );
+  assert.equal(serviceCatalog[0].price, null);
+  assert.equal(serviceCatalog[0].children[0].price, null);
+  assert.equal(
+    newApiModule.servicePathLabel(terminalServices, "metal-fence"),
+    "Благоустрій / Встановлення огорожі / Паркан / Металевий паркан",
+  );
+  assert.deepEqual(
+    serviceSelection.toggleServiceSelection(
+      ["wood-fence"],
+      "metal-fence",
+      terminalServices,
+    ),
+    ["metal-fence"],
+  );
+  assert.deepEqual(
+    serviceSelection.toggleServiceSelection(
+      ["metal-fence"],
+      "metal-fence",
+      terminalServices,
+    ),
+    [],
+  );
+  assert.deepEqual(
+    serviceSelection.toggleServiceSelection(
+      ["metal-fence"],
+      "wet-cleaning",
+      terminalServices,
+    ),
+    ["metal-fence", "wet-cleaning"],
+  );
+  assert.deepEqual(
+    serviceSelection.normalizeServiceSelection(
+      ["wood-fence", "metal-fence", "wet-cleaning"],
+      terminalServices,
+    ),
+    ["metal-fence", "wet-cleaning"],
   );
   assert.throws(
-    () => newApiModule.normalizeServiceCatalog([{ id: "category-1" }]),
+    () =>
+      newApiModule.normalizeServiceCatalog([
+        { id: "category-1", name: "Категорія", children: "invalid" },
+      ]),
     /некоректний каталог послуг/,
   );
   let current;
@@ -228,7 +314,7 @@ try {
   await assert.rejects(apiModule.api.get("/contracts/my"));
   assert.equal(current, null);
   console.log(
-    "PASS: auth/session behavior, list query persistence, and nested service catalog normalization",
+    "PASS: auth/session, URL persistence, recursive catalog, and exclusive service selection",
   );
 } finally {
   await rm(".test-tmp", { recursive: true, force: true });

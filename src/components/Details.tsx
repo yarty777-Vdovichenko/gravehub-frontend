@@ -28,6 +28,7 @@ api,
 errorText,
 pageGet
 } from "../api";
+import { servicePathLabel } from "../new-api";
 import "../style.css";
 import { Badge } from './Badge';
 import { demoUuid } from './demoUuid';
@@ -237,7 +238,11 @@ export function Details() {
               <span>
                 <Flower2 size={18} />
                 {c.serviceTypes?.length
-                  ? c.serviceTypes.map((service) => service.name).join(", ")
+                  ? c.serviceTypes
+                      .map((service) =>
+                        servicePathLabel(a.services, service.id, service.name),
+                      )
+                      .join(", ")
                   : c.serviceType?.name ??
                     a.services.find((s) => s.id === c.serviceTypeId)?.name ??
                     "Послуга"}
@@ -334,6 +339,20 @@ export function Details() {
                         <strong>{money(p.price)}</strong>
                       </div>
                       <p>{p.comment}</p>
+                      {!!e?.specialization?.length && (
+                        <small className="proposal-specializations">
+                          Послуги виконавця:{" "}
+                          {e.specialization
+                            .map((service) =>
+                              servicePathLabel(
+                                a.services,
+                                service.id,
+                                service.name,
+                              ),
+                            )
+                            .join(", ")}
+                        </small>
+                      )}
                       <Badge status={p.status} />
                       {p.status === "pending" && c.status === "open" && (
                         <div className="form-actions">
