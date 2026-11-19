@@ -1,9 +1,11 @@
 import {
 ArrowRight,
-ChevronLeft
+ChevronLeft,
+ChevronRight
 } from "lucide-react";
 import React,{
 useEffect,
+useRef,
 useState
 } from "react";
 import {
@@ -30,6 +32,10 @@ import { useApp } from './useApp';
 export function NewContract() {
   const a = useApp(),
     nav = useNavigate(),
+    initialServiceId = useRef(
+      new URLSearchParams(window.location.search).get("service"),
+    ),
+    didExpandInitialCategory = useRef(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [locationType, setLocationType] = useState<"coordinates" | "burial_plot" | "address">("coordinates"),
@@ -42,6 +48,9 @@ export function NewContract() {
       const service = new URLSearchParams(window.location.search).get("service");
       return service ? [service] : [];
     }),
+    [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+      () => new Set(),
+    ),
     [estimate, setEstimate] = useState<number>(),
     [estimateError, setEstimateError] = useState(""),
     [budget, setBudget] = useState("");
@@ -69,6 +78,16 @@ export function NewContract() {
       active = false;
     };
   }, [a.demo, locationType]);
+  useEffect(() => {
+    if (didExpandInitialCategory.current || !a.serviceCategories.length) return;
+    const category = a.serviceCategories.find(
+      (item) =>
+        item.id === initialServiceId.current ||
+        item.children.some((service) => service.id === initialServiceId.current),
+    );
+    if (category) setExpandedCategories(new Set([category.id]));
+    didExpandInitialCategory.current = true;
+  }, [a.serviceCategories]);
   useEffect(() => {
     if (!selectedServices.length) {
       setEstimate(undefined);
@@ -126,6 +145,49 @@ export function NewContract() {
       )}
     </label>
   );
+  const renderCategory = (
+    categoryId: string,
+    categoryName: string,
+    description?: string,
+  ) => {
+    const expanded = expandedCategories.has(categoryId);
+    const childrenId = `service-category-${categoryId}`;
+    const category = a.serviceCategories.find((item) => item.id === categoryId);
+    return (
+      <fieldset className="service-category-options" key={categoryId}>
+        <div className="service-category-heading">
+          <strong>{categoryName}</strong>
+          <button
+            type="button"
+            className="service-category-toggle"
+            aria-label={`${expanded ? "Згорнути" : "Розгорнути"} послуги категорії ${categoryName}`}
+            aria-expanded={expanded}
+            aria-controls={childrenId}
+            onClick={() =>
+              setExpandedCategories((current) => {
+                const next = new Set(current);
+                if (next.has(categoryId)) next.delete(categoryId);
+                else next.add(categoryId);
+                return next;
+              })
+            }
+          >
+            <ChevronRight size={17} aria-hidden="true" />
+          </button>
+        </div>
+        {description && <p className="service-category-description">{description}</p>}
+        <div
+          id={childrenId}
+          className="service-category-children"
+          role="group"
+          aria-label={`Дочірні послуги категорії ${categoryName}`}
+          hidden={!expanded}
+        >
+          {category?.children.map(renderService)}
+        </div>
+      </fieldset>
+    );
+  };
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -239,17 +301,11 @@ export function NewContract() {
             <span>Послуги</span>
             {a.serviceCategories.length ? (
               a.serviceCategories.map((category) => (
-                <fieldset className="service-category-options" key={category.id}>
-                  <legend>{category.name}</legend>
-                  {category.description && <p>{category.description}</p>}
-                  <div
-                    className="service-checkboxes"
-                    role="group"
-                    aria-label={`Послуги: ${category.name}`}
-                  >
-                    {category.children.map(renderService)}
-                  </div>
-                </fieldset>
+                renderCategory(
+                  category.id,
+                  category.name,
+                  category.description,
+                )
               ))
             ) : (
               <div className="service-checkboxes" role="group" aria-label="Послуги">

@@ -2,6 +2,7 @@ import {
 useEffect,
 useState
 } from "react";
+import { useSearchParams } from "react-router-dom";
 import type {
 Proposal
 } from "../api";
@@ -22,14 +23,33 @@ import { statuses } from './statuses';
 import { useApp } from './useApp';
 export function Proposals() {
   const a = useApp(),
+    [searchParams, setSearchParams] = useSearchParams(),
+    requestedPage = Number(searchParams.get("page")),
+    page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
+    status = searchParams.get("status") ?? "",
     [items, setItems] = useState<Proposal[]>([]),
-    [status, setStatus] = useState(""),
-    [page, setPage] = useState(1),
     [total, setTotal] = useState(0),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [tick, setTick] = useState(0),
     [busy, setBusy] = useState(false);
+  const setPage = (nextPage: number) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextPage <= 1) next.delete("page");
+      else next.set("page", String(nextPage));
+      return next;
+    });
+  };
+  const setStatus = (nextStatus: string) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextStatus) next.set("status", nextStatus);
+      else next.delete("status");
+      next.delete("page");
+      return next;
+    });
+  };
   useEffect(() => {
     let live=true;
     setLoading(true);
@@ -61,7 +81,6 @@ export function Proposals() {
           value={status}
           onChange={(e) => {
             setStatus(e.target.value);
-            setPage(1);
           }}
         >
           <option value="">Усі статуси</option>

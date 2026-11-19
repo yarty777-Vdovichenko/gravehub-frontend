@@ -22,6 +22,13 @@ await build({
   external: ["axios"],
   define: { "import.meta.env.VITE_API_URL": '"https://api.test"' },
 });
+await build({
+  entryPoints: ["src/components/listQuery.ts"],
+  outfile: ".test-tmp/list-query.mjs",
+  bundle: true,
+  platform: "node",
+  format: "esm",
+});
 
 const jwt = (role) =>
   "header." +
@@ -89,6 +96,47 @@ axios.defaults.adapter = async (config) => {
 try {
   const apiModule = await import("../.test-tmp/api.mjs");
   const newApiModule = await import("../.test-tmp/new-api.mjs");
+  const listQueryModule = await import("../.test-tmp/list-query.mjs");
+  const parsedListQuery = listQueryModule.parseListQuery(
+    new URLSearchParams(
+      "search=cleaning&serviceId=service-1&regionId=region-1&minRating=4&page=3&limit=20&sortBy=completedContracts&order=asc",
+    ),
+    true,
+  );
+  assert.equal(parsedListQuery.page, 3);
+  assert.equal(parsedListQuery.limit, 20);
+  assert.deepEqual(parsedListQuery.filters, {
+    search: "cleaning",
+    serviceId: "service-1",
+    regionId: "region-1",
+    minRating: 4,
+    sortBy: "completedContracts",
+    order: "asc",
+  });
+  const savedListQuery = listQueryModule.createListQuery(
+    parsedListQuery.filters,
+    parsedListQuery.limit,
+    parsedListQuery.page,
+    { status: "open" },
+  );
+  assert.equal(savedListQuery.get("page"), "3");
+  assert.equal(savedListQuery.get("limit"), "20");
+  assert.equal(savedListQuery.get("serviceId"), "service-1");
+  assert.equal(savedListQuery.get("status"), "open");
+  const invalidListQuery = listQueryModule.parseListQuery(
+    new URLSearchParams("page=-1&limit=15&minRating=6&sortBy=invalid"),
+    true,
+  );
+  assert.equal(invalidListQuery.page, 1);
+  assert.equal(invalidListQuery.limit, 10);
+  assert.equal(invalidListQuery.filters.minRating, undefined);
+  assert.equal(invalidListQuery.filters.sortBy, "rating");
+  assert.equal(
+    listQueryModule.listQueryKey(
+      new URLSearchParams("page=2&status=open&reviewsPage=3"),
+    ),
+    "page=2",
+  );
   const serviceCatalog = newApiModule.normalizeServiceCatalog([
     {
       id: "category-1",
@@ -180,7 +228,7 @@ try {
   await assert.rejects(apiModule.api.get("/contracts/my"));
   assert.equal(current, null);
   console.log(
-    "PASS: auth/session behavior and nested service catalog normalization",
+    "PASS: auth/session behavior, list query persistence, and nested service catalog normalization",
   );
 } finally {
   await rm(".test-tmp", { recursive: true, force: true });

@@ -1070,15 +1070,46 @@ footer > span:last-child {
 .service-category-options {
   min-width: 0;
   margin: 0 0 12px;
-  padding: 10px;
+  padding: 8px 10px;
   border: 1px solid #dde5da;
   border-radius: 8px;
 }
-.service-category-options legend {
-  padding: 0 5px;
+.service-category-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #64745b;
   font-size: 11px;
   font-weight: 650;
+}
+.service-category-toggle {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #dde5da;
+  border-radius: 6px;
+  background: transparent;
   color: #64745b;
+  cursor: pointer;
+}
+.service-category-toggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+.service-category-description {
+  margin: 4px 0 0;
+  color: #748074;
+  font-size: 11px;
+}
+.service-category-children {
+  display: grid;
+  gap: 8px;
+  margin-top: 9px;
+  padding-left: 12px;
+}
+.service-category-children[hidden] {
+  display: none;
 }
 .service-checkbox {
   display: grid;
@@ -1966,6 +1997,13 @@ legend {
 :root[data-theme="dark"] .service-checkbox:has(input:checked) {
   background: var(--surface-soft);
   border-color: var(--border);
+}
+:root[data-theme="dark"] .service-category-options,
+:root[data-theme="dark"] .service-category-toggle {
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .service-category-heading {
+  color: var(--text-strong);
 }
 :root[data-theme="dark"] .sidebar nav a,
 :root[data-theme="dark"] .icon-button,

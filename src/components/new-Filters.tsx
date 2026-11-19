@@ -3,17 +3,22 @@ import type { Option, SelectableService } from "../api";
 import type {
 SearchFilters
 } from "../new-api";
+import type { ListFilters } from "./listQuery";
 import "../new-pages.css";
 import { ErrorView } from './new-ErrorView';
 export function Filters({
   services,
   regions,
   employee,
+  initialFilters,
+  initialLimit,
   onChange,
 }: {
   services: SelectableService[];
   regions: Option[];
   employee: boolean;
+  initialFilters: ListFilters;
+  initialLimit: number;
   onChange: (f: Omit<SearchFilters, "page" | "limit">, limit: number) => void;
 }) {
   const [error, setError] = useState("");
@@ -58,8 +63,9 @@ export function Filters({
         maxLength={100}
         placeholder={employee ? "Ім’я виконавця" : "Пошук замовлень"}
         aria-label="Пошук"
+        defaultValue={initialFilters.search ?? ""}
       />
-      <select name="regionId" aria-label="Регіон">
+      <select name="regionId" aria-label="Регіон" defaultValue={initialFilters.regionId ?? ""}>
         <option value="">Усі регіони</option>
         {regions.map((x) => (
           <option key={x.id} value={x.id}>
@@ -67,7 +73,7 @@ export function Filters({
           </option>
         ))}
       </select>
-      <select name="serviceId" aria-label="Послуга">
+      <select name="serviceId" aria-label="Послуга" defaultValue={initialFilters.serviceId ?? ""}>
         <option value="">Усі послуги</option>
         {services.map((x) => (
           <option key={x.id} value={x.id}>
@@ -84,6 +90,7 @@ export function Filters({
           step="0.1"
           placeholder="Рейтинг від"
           aria-label="Мінімальний рейтинг"
+          defaultValue={initialFilters.minRating ?? ""}
         />
       ) : (
         <>
@@ -94,6 +101,7 @@ export function Filters({
             step={1}
             placeholder="Бюджет від"
             aria-label="Бюджет від"
+            defaultValue={initialFilters.minBudget ?? ""}
           />
           <input
             type="number"
@@ -102,10 +110,11 @@ export function Filters({
             step={1}
             placeholder="Бюджет до"
             aria-label="Бюджет до"
+            defaultValue={initialFilters.maxBudget ?? ""}
           />
         </>
       )}
-      <select name="sortBy" aria-label="Сортування">
+      <select name="sortBy" aria-label="Сортування" defaultValue={initialFilters.sortBy ?? (employee ? "rating" : "createdAt")}>
         {(employee
           ? [
               ["rating", "За рейтингом"],
@@ -121,11 +130,11 @@ export function Filters({
           </option>
         ))}
       </select>
-      <select name="order" aria-label="Порядок">
+      <select name="order" aria-label="Порядок" defaultValue={initialFilters.order ?? "desc"}>
         <option value="desc">За спаданням</option>
         <option value="asc">За зростанням</option>
       </select>
-      <select name="limit" aria-label="На сторінці">
+      <select name="limit" aria-label="На сторінці" defaultValue={initialLimit}>
         {[10, 20, 50].map((n) => (
           <option key={n} value={n}>
             {n} на сторінці

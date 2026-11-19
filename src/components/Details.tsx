@@ -15,7 +15,8 @@ useState
 import {
 Link,
 useNavigate,
-useParams
+useParams,
+useSearchParams
 } from "react-router-dom";
 import type {
 Contract,
@@ -43,17 +44,38 @@ export function Details() {
   const { id } = useParams(),
     a = useApp(),
     nav = useNavigate(),
+    [searchParams, setSearchParams] = useSearchParams(),
+    requestedPage = Number(searchParams.get("page")),
+    page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
+    requestedReviewPage = Number(searchParams.get("reviewsPage")),
+    reviewPage = Number.isInteger(requestedReviewPage) && requestedReviewPage > 0
+      ? requestedReviewPage
+      : 1,
     [c, setC] = useState<Contract>(),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [proposals, setProposals] = useState<Proposal[]>([]),
-    [page, setPage] = useState(1),
     [total, setTotal] = useState(0),
     [reviewFor, setReviewFor] = useState<string>(),
     [reviews, setReviews] = useState<Review[]|undefined>(undefined),
-    [reviewPage, setReviewPage] = useState(1),
     [reviewTotal, setReviewTotal] = useState(0),
     [confirmDelete, setConfirmDelete] = useState(false);
+  const setPage = (nextPage: number) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextPage <= 1) next.delete("page");
+      else next.set("page", String(nextPage));
+      return next;
+    });
+  };
+  const setReviewPage = (nextPage: number) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextPage <= 1) next.delete("reviewsPage");
+      else next.set("reviewsPage", String(nextPage));
+      return next;
+    });
+  };
   const loadVersion=useRef(0);
   const load = useCallback(async () => {
     const version=++loadVersion.current;

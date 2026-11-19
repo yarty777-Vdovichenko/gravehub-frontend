@@ -1,16 +1,16 @@
 import axios from "axios";
-import { useEffect,useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect,useMemo,useState } from "react";
+import { Link,useSearchParams } from "react-router-dom";
 import type { Contract, Option, SelectableService } from "../api";
 import { api,errorText } from "../api";
 import type {
 MetaPage,
-SearchFilters
 } from "../new-api";
 import "../new-pages.css";
 import { cash } from './new-cash';
 import { ErrorView } from './new-ErrorView';
 import { Filters } from './new-Filters';
+import { createListQuery, listQueryKey, parseListQuery } from "./listQuery";
 import { Pager } from './new-Pager';
 export function AdvancedMarket({
   services,
@@ -21,14 +21,25 @@ export function AdvancedMarket({
   regions: Option[];
   endpoint?:string;
 }) {
-  const [filters, setFilters] = useState<Omit<SearchFilters, "page" | "limit">>(
-      { sortBy: "createdAt", order: "desc" },
+  const [searchParams, setSearchParams] = useSearchParams(),
+    searchKey = searchParams.toString(),
+    listKey = listQueryKey(searchParams),
+    query = useMemo(
+      () => parseListQuery(new URLSearchParams(listKey), false),
+      [listKey],
     ),
-    [page, setPage] = useState(1),
-    [limit, setLimit] = useState(10),
+    { filters, page, limit } = query,
     [data, setData] = useState<MetaPage<Contract>>(),
     [error, setError] = useState(""),
-    [status,setStatus]=useState("");
+    status = searchParams.get("status") ?? "";
+  const changePage = (nextPage: number) =>
+    setSearchParams(
+      createListQuery(filters, limit, nextPage, { status: status || undefined }),
+    );
+  const changeStatus = (nextStatus: string) =>
+    setSearchParams(
+      createListQuery(filters, limit, 1, { status: nextStatus || undefined }),
+    );
   useEffect(() => {
     const c = new AbortController();
     setData(undefined);
@@ -49,15 +60,16 @@ export function AdvancedMarket({
       <div className="page-title">
         <h1>{endpoint === "/contracts/my" ? "Мої замовлення" : "Знайти замовлення"}</h1>
       </div>
-      <label>Статус замовлення <select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Усі статуси</option>{["open","in_progress","awaiting_confirmation","completed","cancelled"].map(st=><option key={st} value={st}>{st}</option>)}</select></label>
+      <label>Статус замовлення <select value={status} onChange={e=>changeStatus(e.target.value)}><option value="">Усі статуси</option>{["open","in_progress","awaiting_confirmation","completed","cancelled"].map(st=><option key={st} value={st}>{st}</option>)}</select></label>
       <Filters
         employee={false}
         services={services}
         regions={regions}
+        initialFilters={filters}
+        initialLimit={limit}
+        key={`${searchKey}:${services.length}`}
         onChange={(f, n) => {
-          setFilters(f);
-          setLimit(n);
-          setPage(1);
+          setSearchParams(createListQuery(f, n, 1, { status: status || undefined }));
         }}
       />
       <ErrorView error={error} />
@@ -85,7 +97,7 @@ export function AdvancedMarket({
             ) : (
               <div className="empty">Замовлень за цими умовами немає.</div>
             )}
-            <Pager page={page} pages={data.meta.pages} setPage={setPage} />
+            <Pager page={page} pages={data.meta.pages} setPage={changePage} />
           </section>
         )
       )}

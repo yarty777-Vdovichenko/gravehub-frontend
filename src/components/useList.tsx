@@ -2,6 +2,7 @@ import {
 useEffect,
 useState
 } from "react";
+import { useSearchParams } from "react-router-dom";
 import type {
 Contract
 } from "../api";
@@ -13,12 +14,22 @@ import "../style.css";
 import { useApp } from './useApp';
 export function useList(url: string, status = "", demoItems?: Contract[]) {
   const a = useApp(),
+    [searchParams, setSearchParams] = useSearchParams(),
+    requestedPage = Number(searchParams.get("page")),
+    page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
     [items, setItems] = useState<Contract[]>([]),
-    [page, setPage] = useState(1),
     [total, setTotal] = useState(0),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [tick, setTick] = useState(0);
+  const setPage = (nextPage: number) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextPage <= 1) next.delete("page");
+      else next.set("page", String(nextPage));
+      return next;
+    });
+  };
   useEffect(() => {
     let live = true;
     setLoading(true);

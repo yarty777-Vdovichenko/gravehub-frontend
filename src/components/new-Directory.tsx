@@ -1,17 +1,17 @@
 import axios from "axios";
-import { useEffect,useState } from "react";
-import { Link,useNavigate,useParams } from "react-router-dom";
+import { useEffect,useMemo,useState } from "react";
+import { Link,useNavigate,useParams,useSearchParams } from "react-router-dom";
 import type { Option,Page,Review,SelectableService } from "../api";
 import { api,configured,errorText } from "../api";
 import type {
 Employee,
-MetaPage,
-SearchFilters
+MetaPage
 } from "../new-api";
 import { newApi } from "../new-api";
 import "../new-pages.css";
 import { ErrorView } from './new-ErrorView';
 import { Filters } from './new-Filters';
+import { createListQuery, listQueryKey, parseListQuery } from "./listQuery";
 import { Pager } from './new-Pager';
 export function Directory({
   services,
@@ -22,19 +22,34 @@ export function Directory({
 }) {
   const { id } = useParams(),
     navigate = useNavigate(),
+    [searchParams, setSearchParams] = useSearchParams(),
+    searchKey = searchParams.toString(),
+    listKey = listQueryKey(searchParams),
+    query = useMemo(
+      () => parseListQuery(new URLSearchParams(listKey), true),
+      [listKey],
+    ),
     [profile, setProfile] = useState<Employee>(),
     [data, setData] = useState<MetaPage<Employee>>(),
     [reviews, setReviews] = useState<Page<Review>>(),
-    [reviewPage, setReviewPage] = useState(1),
+    requestedReviewPage = Number(searchParams.get("reviewsPage")),
+    reviewPage = Number.isInteger(requestedReviewPage) && requestedReviewPage > 0
+      ? requestedReviewPage
+      : 1,
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [chatBusy, setChatBusy] = useState(false),
-    [page, setPage] = useState(1),
-    [limit, setLimit] = useState(10),
-    [filters, setFilters] = useState<Omit<SearchFilters, "page" | "limit">>({
-      sortBy: "rating",
-      order: "desc",
+    page = query.page,
+    limit = query.limit,
+    filters = query.filters;
+  const setReviewPage = (nextPage: number) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextPage <= 1) next.delete("reviewsPage");
+      else next.set("reviewsPage", String(nextPage));
+      return next;
     });
+  };
   useEffect(() => {
     const c = new AbortController();
     setBusy(true);
@@ -51,7 +66,7 @@ export function Directory({
       .finally(() => {if(!c.signal.aborted)setBusy(false)});
     return () => c.abort();
   }, [id, page, limit, filters]);
-  useEffect(() => {setReviews(undefined);setReviewPage(1);},[id]);
+  useEffect(() => {setReviews(undefined);},[id]);
   useEffect(() => {
     if (!id) {setReviews(undefined);return;}
     const c=new AbortController();setReviews(undefined);
@@ -76,10 +91,11 @@ export function Directory({
           employee
           services={services}
           regions={regions}
+          initialFilters={filters}
+          initialLimit={limit}
+          key={`${searchKey}:${services.length}`}
           onChange={(f, n) => {
-            setFilters(f);
-            setLimit(n);
-            setPage(1);
+            setSearchParams(createListQuery(f, n, 1));
           }}
         />
       )}
@@ -177,7 +193,13 @@ export function Directory({
             {!data.items.length && (
               <div className="empty">Виконавців за цими умовами немає.</div>
             )}
-            <Pager page={page} pages={data.meta.pages} setPage={setPage} />
+            <Pager
+              page={page}
+              pages={data.meta.pages}
+              setPage={(nextPage) =>
+                setSearchParams(createListQuery(filters, limit, nextPage))
+              }
+            />
           </>
         )
       )}
