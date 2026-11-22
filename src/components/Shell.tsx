@@ -43,6 +43,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     nav = useNavigate();
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
     localStorage.setItem("gravehub-theme", theme);
   }, [theme]);
   const hasCustomerRole = a.session?.user.roles.includes("customer") ?? false;

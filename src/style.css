@@ -21,6 +21,25 @@
   --shadow: 0 1px 4px #192d1312;
   color-scheme: light;
 }
+:root[data-theme="light"] {
+  --page-bg: #f7f8fa;
+  --surface: #fff;
+  --surface-soft: #f6f7f1;
+  --surface-selected: #eaf1e9;
+  --text: #263c32;
+  --text-strong: #2f4435;
+  --text-muted: #839087;
+  --text-subtle: #98a097;
+  --border: #e7ebe7;
+  --border-soft: #e9ece9;
+  --input-border: #dfe5e0;
+  --green: #356046;
+  --green-soft: #688a70;
+  --shadow: 0 1px 4px #192d1312;
+  color: var(--text);
+  background: var(--page-bg);
+  color-scheme: light;
+}
 :root[data-theme="dark"] {
   --page-bg: #111713;
   --surface: #1a211d;
@@ -2253,6 +2272,7 @@ legend {
 :root[data-theme="dark"] .sidebar,
 :root[data-theme="dark"] header,
 :root[data-theme="dark"] .main,
+:root[data-theme="dark"] .app,
 :root[data-theme="dark"] .panel,
 :root[data-theme="dark"] .notification-menu,
 :root[data-theme="dark"] .chat-message,
@@ -2359,6 +2379,10 @@ legend {
 :root[data-theme="dark"] .review,
 :root[data-theme="dark"] .empty,
 :root[data-theme="dark"] .pagination,
+:root[data-theme="dark"] .order-row,
+:root[data-theme="dark"] .chat-layout,
+:root[data-theme="dark"] .detail-grid,
+:root[data-theme="dark"] .service-grid,
 :root[data-theme="dark"] footer {
   background: var(--surface);
   border-color: var(--border);

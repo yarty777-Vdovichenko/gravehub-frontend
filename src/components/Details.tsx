@@ -60,7 +60,12 @@ export function Details() {
     [reviewFor, setReviewFor] = useState<string>(),
     [reviews, setReviews] = useState<Review[]|undefined>(undefined),
     [reviewTotal, setReviewTotal] = useState(0),
-    [confirmDelete, setConfirmDelete] = useState(false);
+    [confirmDelete, setConfirmDelete] = useState(false),
+    [mockConfirmOpen, setMockConfirmOpen] = useState(false),
+    [confirmBody, setConfirmBody] = useState<{ rating: number; text: string }>(),
+    [confirmCardNumber, setConfirmCardNumber] = useState(""),
+    [confirmCardExpiry, setConfirmCardExpiry] = useState(""),
+    [confirmCardCvc, setConfirmCardCvc] = useState("");
   const setPage = (nextPage: number) => {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -402,14 +407,11 @@ export function Details() {
                   onSubmit={(e) => {
                     e.preventDefault();
                     const f = new FormData(e.currentTarget);
-                    action(
-                      `/customer/contracts/${id}/confirm`,
-                      {
-                        rating: Number(f.get("rating")),
-                        text: String(f.get("text")).trim(),
-                      },
-                      "completed",
-                    );
+                    setConfirmBody({
+                      rating: Number(f.get("rating")),
+                      text: String(f.get("text")).trim(),
+                    });
+                    setMockConfirmOpen(true);
                   }}
                 >
                   <Field label="Оцінка">
@@ -502,6 +504,98 @@ export function Details() {
           )}
         </section>
       </div>
+      {mockConfirmOpen && confirmBody && (
+        <div
+          className="modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !busy) setMockConfirmOpen(false);
+          }}
+        >
+          <section className="panel modal" role="dialog" aria-modal="true" aria-label="Оплата завершення контракту">
+            <button
+              type="button"
+              className="close"
+              aria-label="Закрити оплату"
+              disabled={busy}
+              onClick={() => setMockConfirmOpen(false)}
+            >
+              <X />
+            </button>
+            <h2>Мокова оплата завершення контракту</h2>
+            <p>Оплата не списується. Дані картки потрібні лише для тестового сценарію.</p>
+            <label className="field">
+              <span>Номер картки</span>
+              <input
+                inputMode="numeric"
+                maxLength={19}
+                value={confirmCardNumber}
+                placeholder="4242 4242 4242 4242"
+                onChange={(event) => setConfirmCardNumber(event.target.value.replace(/[^\d ]/g, "").slice(0, 19))}
+              />
+            </label>
+            <div className="form-grid">
+              <label className="field">
+                <span>Термін дії</span>
+                <input
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={confirmCardExpiry}
+                  placeholder="MM/YY"
+                  onChange={(event) => setConfirmCardExpiry(event.target.value.replace(/[^\d/]/g, "").slice(0, 5))}
+                />
+              </label>
+              <label className="field">
+                <span>CVV/CVC</span>
+                <input
+                  inputMode="numeric"
+                  type="password"
+                  maxLength={3}
+                  value={confirmCardCvc}
+                  placeholder="123"
+                  onChange={(event) => setConfirmCardCvc(event.target.value.replace(/\D/g, "").slice(0, 3))}
+                />
+              </label>
+            </div>
+            <div className="form-actions">
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy}
+                onClick={() => setMockConfirmOpen(false)}
+              >
+                Скасувати
+              </button>
+              <button
+                type="button"
+                className="button primary"
+                disabled={busy}
+                onClick={() => {
+                  if (confirmCardNumber.replace(/\D/g, "").length !== 16) {
+                    a.notice("Введіть 16 цифр номера картки.");
+                    return;
+                  }
+                  if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(confirmCardExpiry)) {
+                    a.notice("Введіть термін дії у форматі MM/YY.");
+                    return;
+                  }
+                  if (!/^\d{3}$/.test(confirmCardCvc)) {
+                    a.notice("Введіть 3 цифри CVV/CVC.");
+                    return;
+                  }
+                  setMockConfirmOpen(false);
+                  void action(
+                    `/customer/contracts/${id}/confirm`,
+                    confirmBody,
+                    "completed",
+                  );
+                }}
+              >
+                {busy ? "Оплата…" : "Підтвердити та оплатити"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
       {reviewFor && (
         <div className="modal-backdrop" onClick={e=>{if(e.target===e.currentTarget)setReviewFor(undefined)}}>
           <section className="panel modal" role="dialog" aria-modal="true" aria-label="Відгуки виконавця" onKeyDown={e=>{if(e.key==='Escape')setReviewFor(undefined);if(e.key==='Tab'){const nodes=e.currentTarget.querySelectorAll<HTMLElement>('button,a,input,select,textarea,[tabindex="0"]');const first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}}}>

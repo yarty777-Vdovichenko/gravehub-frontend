@@ -47,7 +47,10 @@ export function NewContract() {
     [budget, setBudget] = useState(""),
     [regionId, setRegionId] = useState(""),
     [pendingContract, setPendingContract] = useState<ContractInput>(),
-    [paymentBusy, setPaymentBusy] = useState(false);
+    [paymentBusy, setPaymentBusy] = useState(false),
+    [cardNumber, setCardNumber] = useState(""),
+    [cardExpiry, setCardExpiry] = useState(""),
+    [cardCvc, setCardCvc] = useState("");
   useEffect(() => {
     if (a.demo || locationType !== "burial_plot") {
       setOwnedPlots([]);
@@ -167,6 +170,19 @@ export function NewContract() {
   }
   async function confirmMockPayment() {
     if (!pendingContract) return;
+    const digits = cardNumber.replace(/\D/g, "");
+    if (digits.length !== 16) {
+      setError("Введіть 16 цифр номера картки.");
+      return;
+    }
+    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardExpiry)) {
+      setError("Введіть термін дії у форматі MM/YY.");
+      return;
+    }
+    if (!/^\d{3}$/.test(cardCvc)) {
+      setError("Введіть 3 цифри CVV/CVC.");
+      return;
+    }
     setPaymentBusy(true);
     setBusy(true);
     try {
@@ -406,10 +422,40 @@ export function NewContract() {
             </button>
             <h2>Мокова оплата замовлення</h2>
             <p>Без списання коштів. Платіж підтверджується автоматично.</p>
+            {error && <ErrorBox text={error} />}
             <label className="field">
               <span>Номер картки</span>
-              <input value="4242 4242 4242 4242" readOnly />
+              <input
+                inputMode="numeric"
+                maxLength={19}
+                value={cardNumber}
+                placeholder="4242 4242 4242 4242"
+                onChange={(event) => setCardNumber(event.target.value.replace(/[^\d ]/g, "").slice(0, 19))}
+              />
             </label>
+            <div className="form-grid">
+              <label className="field">
+                <span>Термін дії</span>
+                <input
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={cardExpiry}
+                  placeholder="MM/YY"
+                  onChange={(event) => setCardExpiry(event.target.value.replace(/[^\d/]/g, "").slice(0, 5))}
+                />
+              </label>
+              <label className="field">
+                <span>CVV/CVC</span>
+                <input
+                  inputMode="numeric"
+                  type="password"
+                  maxLength={3}
+                  value={cardCvc}
+                  placeholder="123"
+                  onChange={(event) => setCardCvc(event.target.value.replace(/\D/g, "").slice(0, 3))}
+                />
+              </label>
+            </div>
             <strong>{pendingContract.budget.toLocaleString("uk-UA")} ₴</strong>
             <div className="form-actions">
               <button

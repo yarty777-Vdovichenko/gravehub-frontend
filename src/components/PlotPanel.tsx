@@ -47,6 +47,9 @@ export function PlotPanel({
   const [downPayment, setDownPayment] = useState(0);
   const [credit, setCredit] = useState<Credit | null>(null);
   const [mockPaymentOpen, setMockPaymentOpen] = useState(false);
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvc, setCardCvc] = useState("");
 
   const handleExpired = useCallback(() => {
     onReservation(null);
@@ -251,10 +254,40 @@ export function PlotPanel({
             </button>
             <h2>Мокова оплата могили</h2>
             <p>Без списання коштів. Тестова картка підтверджує покупку автоматично.</p>
+            {error && <ErrorBox text={error} />}
             <label className="field">
               <span>Номер картки</span>
-              <input value="4242 4242 4242 4242" readOnly />
+              <input
+                inputMode="numeric"
+                maxLength={19}
+                value={cardNumber}
+                placeholder="4242 4242 4242 4242"
+                onChange={(event) => setCardNumber(event.target.value.replace(/[^\d ]/g, "").slice(0, 19))}
+              />
             </label>
+            <div className="form-grid">
+              <label className="field">
+                <span>Термін дії</span>
+                <input
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={cardExpiry}
+                  placeholder="MM/YY"
+                  onChange={(event) => setCardExpiry(event.target.value.replace(/[^\d/]/g, "").slice(0, 5))}
+                />
+              </label>
+              <label className="field">
+                <span>CVV/CVC</span>
+                <input
+                  inputMode="numeric"
+                  type="password"
+                  maxLength={3}
+                  value={cardCvc}
+                  placeholder="123"
+                  onChange={(event) => setCardCvc(event.target.value.replace(/\D/g, "").slice(0, 3))}
+                />
+              </label>
+            </div>
             <strong>{money(payment === "credit" ? downPayment : plot.price)}</strong>
             <div className="form-actions">
               <button
@@ -269,7 +302,19 @@ export function PlotPanel({
                 className="button primary"
                 type="button"
                 disabled={busy}
-                onClick={() =>
+                onClick={() => {
+                  if (cardNumber.replace(/\D/g, "").length !== 16) {
+                    setError("Введіть 16 цифр номера картки.");
+                    return;
+                  }
+                  if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardExpiry)) {
+                    setError("Введіть термін дії у форматі MM/YY.");
+                    return;
+                  }
+                  if (!/^\d{3}$/.test(cardCvc)) {
+                    setError("Введіть 3 цифри CVV/CVC.");
+                    return;
+                  }
                   void run(async () => {
                     await plotsApi.purchase(
                       plot.id,
@@ -282,7 +327,7 @@ export function PlotPanel({
                     onChanged();
                     notice("Мокову оплату підтверджено. Місце придбано.");
                   })
-                }
+                }}
               >
                 {busy ? "Оплата…" : "Підтвердити оплату"}
               </button>
