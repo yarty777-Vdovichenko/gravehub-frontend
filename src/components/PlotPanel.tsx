@@ -46,6 +46,7 @@ export function PlotPanel({
   const [months, setMonths] = useState<(typeof TERMS)[number]>(12);
   const [downPayment, setDownPayment] = useState(0);
   const [credit, setCredit] = useState<Credit | null>(null);
+  const [mockPaymentOpen, setMockPaymentOpen] = useState(false);
 
   const handleExpired = useCallback(() => {
     onReservation(null);
@@ -211,25 +212,9 @@ export function PlotPanel({
             <button
               className="button primary"
               disabled={busy || (payment === "credit" && !credit)}
-              onClick={() =>
-                run(async () => {
-                  await plotsApi.purchase(
-                    plot.id,
-                    payment === "full"
-                      ? { paymentType: "full" }
-                      : {
-                          paymentType: "credit",
-                          months,
-                          downPayment,
-                        },
-                  );
-                  onReservation(null);
-                  onChanged();
-                  notice("Місце придбано. Дякуємо!");
-                })
-              }
+              onClick={() => setMockPaymentOpen(true)}
             >
-              Купити
+              Оплатити й купити
             </button>
             <button
               className="button secondary"
@@ -246,6 +231,64 @@ export function PlotPanel({
             </button>
           </div>
         </>
+      )}
+      {mockPaymentOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !busy) setMockPaymentOpen(false);
+          }}
+        >
+          <section className="panel modal" role="dialog" aria-modal="true" aria-label="Оплата могили">
+            <button
+              type="button"
+              className="close"
+              aria-label="Закрити оплату"
+              disabled={busy}
+              onClick={() => setMockPaymentOpen(false)}
+            >
+              ×
+            </button>
+            <h2>Мокова оплата могили</h2>
+            <p>Без списання коштів. Тестова картка підтверджує покупку автоматично.</p>
+            <label className="field">
+              <span>Номер картки</span>
+              <input value="4242 4242 4242 4242" readOnly />
+            </label>
+            <strong>{money(payment === "credit" ? downPayment : plot.price)}</strong>
+            <div className="form-actions">
+              <button
+                className="button secondary"
+                type="button"
+                disabled={busy}
+                onClick={() => setMockPaymentOpen(false)}
+              >
+                Скасувати
+              </button>
+              <button
+                className="button primary"
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    await plotsApi.purchase(
+                      plot.id,
+                      payment === "full"
+                        ? { paymentType: "full" }
+                        : { paymentType: "credit", months, downPayment },
+                    );
+                    setMockPaymentOpen(false);
+                    onReservation(null);
+                    onChanged();
+                    notice("Мокову оплату підтверджено. Місце придбано.");
+                  })
+                }
+              >
+                {busy ? "Оплата…" : "Підтвердити оплату"}
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );

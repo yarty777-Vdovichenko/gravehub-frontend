@@ -20,14 +20,12 @@ import { money } from './money';
 import { PageTitle } from './PageTitle';
 import { Pagination } from './Pagination';
 import { Spinner } from './Spinner';
-import { statuses } from './statuses';
 import { useApp } from './useApp';
 export function Proposals() {
   const a = useApp(),
     [searchParams, setSearchParams] = useSearchParams(),
     requestedPage = Number(searchParams.get("page")),
     page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
-    status = searchParams.get("status") ?? "",
     [items, setItems] = useState<Proposal[]>([]),
     [total, setTotal] = useState(0),
     [loading, setLoading] = useState(true),
@@ -42,26 +40,17 @@ export function Proposals() {
       return next;
     });
   };
-  const setStatus = (nextStatus: string) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      if (nextStatus) next.set("status", nextStatus);
-      else next.delete("status");
-      next.delete("page");
-      return next;
-    });
-  };
   useEffect(() => {
     let live=true;
     setLoading(true);
     setError("");
     if (a.demo) {
-      const ps = a.demoProposals.filter((p) => !status || p.status === status);
+      const ps = a.demoProposals;
       setItems(ps.slice((page - 1) * 10, page * 10));
       setTotal(ps.length);
       setLoading(false);
     } else
-      pageGet<Proposal>("/employee/proposals", page, status)
+      pageGet<Proposal>("/employee/proposals", page)
         .then((r) => {
           if(!live)return;
           setItems(r.items);
@@ -70,7 +59,7 @@ export function Proposals() {
         .catch((e) => {if(live)setError(errorText(e))})
         .finally(() => {if(live)setLoading(false)});
     return()=>{live=false};
-  }, [a.demo, page, status, tick, a.demoProposals]);
+  }, [a.demo, page, tick, a.demoProposals]);
   return (
     <>
       <PageTitle
@@ -78,19 +67,6 @@ export function Proposals() {
         subtitle="Стежте за відповідями замовників та керуйте своїми пропозиціями."
       />
       <section className="panel detail-panel">
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-          }}
-        >
-          <option value="">Усі статуси</option>
-          {["pending", "accepted", "rejected"].map((s) => (
-            <option key={s} value={s}>
-              {statuses[s]}
-            </option>
-          ))}
-        </select>
         {loading ? (
           <Spinner />
         ) : error ? (

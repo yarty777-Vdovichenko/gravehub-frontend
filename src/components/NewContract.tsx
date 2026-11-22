@@ -44,7 +44,10 @@ export function NewContract() {
     }),
     [estimate, setEstimate] = useState<number>(),
     [estimateError, setEstimateError] = useState(""),
-    [budget, setBudget] = useState("");
+    [budget, setBudget] = useState(""),
+    [regionId, setRegionId] = useState(""),
+    [pendingContract, setPendingContract] = useState<ContractInput>(),
+    [paymentBusy, setPaymentBusy] = useState(false);
   useEffect(() => {
     if (a.demo || locationType !== "burial_plot") {
       setOwnedPlots([]);
@@ -132,6 +135,19 @@ export function NewContract() {
         return;
       }
       body.burialPlotId = selectedPlotId;
+      const plot = ownedPlots.find((item) => item.id === selectedPlotId);
+      const city = plot?.cemetery.city.trim();
+      const autoRegion = a.regions.find((item) =>
+        city
+          ? item.name.toLocaleLowerCase("uk-UA").includes(city.toLocaleLowerCase("uk-UA")) ||
+            city.toLocaleLowerCase("uk-UA").includes(item.name.toLocaleLowerCase("uk-UA"))
+          : false,
+      );
+      body.regionId = autoRegion?.id ?? regionId;
+      if (!body.regionId) {
+        setError("Не вдалося визначити регіон для вибраної могили.");
+        return;
+      }
     } else {
       body.address = address.trim();
       if (!body.address) {
@@ -147,28 +163,35 @@ export function NewContract() {
       setError("Вкажіть бюджет, більший за нуль.");
       return;
     }
+    setPendingContract(body);
+  }
+  async function confirmMockPayment() {
+    if (!pendingContract) return;
+    setPaymentBusy(true);
     setBusy(true);
     try {
       if (a.demo) {
         const c: Contract = {
-          ...body,
+          ...pendingContract,
           id: demoUuid(),
           status: "open",
-          region: a.regions.find((r) => r.id === body.regionId),
-          serviceTypes: a.services.filter((s) => body.serviceTypeIds.includes(s.id)),
+          region: a.regions.find((r) => r.id === pendingContract.regionId),
+          serviceTypes: a.services.filter((s) => pendingContract.serviceTypeIds.includes(s.id)),
           proposalsCount: 0,
         };
         a.setContracts((cs) => [c, ...cs]);
         nav("/contracts/" + c.id);
       } else {
-        const r = await api.post<Contract>("/contracts", body);
+        const r = await api.post<Contract>("/contracts", pendingContract);
         nav("/contracts/" + r.data.id);
       }
+      setPendingContract(undefined);
       a.notice("Замовлення створено");
     } catch (e) {
       setError(errorText(e));
     } finally {
       setBusy(false);
+      setPaymentBusy(false);
     }
   }
   return (
@@ -232,7 +255,9 @@ export function NewContract() {
             <select
               required
               name="regionId"
-              defaultValue=""
+              value={regionId}
+              disabled={locationType === "burial_plot"}
+              onChange={(event) => setRegionId(event.currentTarget.value)}
             >
               <option value="" disabled>
                 Оберіть регіон
@@ -271,7 +296,19 @@ export function NewContract() {
                 name="burialPlotId"
                 required
                 value={selectedPlotId}
-                onChange={(event) => setSelectedPlotId(event.currentTarget.value)}
+                onChange={(event) => {
+                  const plotId = event.currentTarget.value;
+                  setSelectedPlotId(plotId);
+                  const plot = ownedPlots.find((item) => item.id === plotId);
+                  const city = plot?.cemetery.city.trim();
+                  const autoRegion = a.regions.find((item) =>
+                    city
+                      ? item.name.toLocaleLowerCase("uk-UA").includes(city.toLocaleLowerCase("uk-UA")) ||
+                        city.toLocaleLowerCase("uk-UA").includes(item.name.toLocaleLowerCase("uk-UA"))
+                      : false,
+                  );
+                  setRegionId(autoRegion?.id ?? "");
+                }}
               >
                 <option value="">Оберіть ділянку</option>
                 {ownedPlots.map((plot) => (
@@ -345,11 +382,56 @@ export function NewContract() {
             Скасувати
           </Link>
           <button className="button primary" disabled={busy}>
-            {busy ? "Створення…" : "Опублікувати замовлення"}
+            {busy ? "Перевірка…" : "Перейти до оплати"}
             <ArrowRight size={17} />
           </button>
         </div>
       </form>
+      {pendingContract && (
+        <div
+          className="modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !paymentBusy) setPendingContract(undefined);
+          }}
+        >
+          <section className="panel modal" role="dialog" aria-modal="true" aria-label="Оплата замовлення">
+            <button
+              type="button"
+              className="close"
+              aria-label="Закрити оплату"
+              disabled={paymentBusy}
+              onClick={() => setPendingContract(undefined)}
+            >
+              ×
+            </button>
+            <h2>Мокова оплата замовлення</h2>
+            <p>Без списання коштів. Платіж підтверджується автоматично.</p>
+            <label className="field">
+              <span>Номер картки</span>
+              <input value="4242 4242 4242 4242" readOnly />
+            </label>
+            <strong>{pendingContract.budget.toLocaleString("uk-UA")} ₴</strong>
+            <div className="form-actions">
+              <button
+                className="button secondary"
+                type="button"
+                disabled={paymentBusy}
+                onClick={() => setPendingContract(undefined)}
+              >
+                Скасувати
+              </button>
+              <button
+                className="button primary"
+                type="button"
+                disabled={paymentBusy}
+                onClick={() => void confirmMockPayment()}
+              >
+                {paymentBusy ? "Оплата…" : "Підтвердити оплату"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </>
   );
 }

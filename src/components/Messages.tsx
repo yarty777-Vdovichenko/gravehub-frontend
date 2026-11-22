@@ -230,7 +230,7 @@ export function Messages() {
                 <span className="avatar">{selected.participant.name.slice(0, 1)}</span>
                 <div>
                   <b>{selected.participant.name}</b>
-                  <small>{connected ? "У мережі" : "Підключення до чату…"}</small>
+                  <small>{connected ? "Чат активний" : "Підключення до чату…"}</small>
                 </div>
               </div>
               <div className="chat-messages" aria-live="polite">

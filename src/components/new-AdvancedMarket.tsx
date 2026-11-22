@@ -31,16 +31,9 @@ export function AdvancedMarket({
     ),
     { filters, page, limit } = query,
     [data, setData] = useState<MetaPage<Contract>>(),
-    [error, setError] = useState(""),
-    status = searchParams.get("status") ?? "";
+    [error, setError] = useState("");
   const changePage = (nextPage: number) =>
-    setSearchParams(
-      createListQuery(filters, limit, nextPage, { status: status || undefined }),
-    );
-  const changeStatus = (nextStatus: string) =>
-    setSearchParams(
-      createListQuery(filters, limit, 1, { status: nextStatus || undefined }),
-    );
+    setSearchParams(createListQuery(filters, limit, nextPage));
   useEffect(() => {
     const c = new AbortController();
     setData(undefined);
@@ -61,7 +54,6 @@ export function AdvancedMarket({
       <div className="page-title">
         <h1>{endpoint === "/contracts/my" ? "Мої замовлення" : "Знайти замовлення"}</h1>
       </div>
-      <label>Статус замовлення <select value={status} onChange={e=>changeStatus(e.target.value)}><option value="">Усі статуси</option>{["open","in_progress","awaiting_confirmation","completed","cancelled"].map(st=><option key={st} value={st}>{st}</option>)}</select></label>
       <Filters
         employee={false}
         services={services}
@@ -70,7 +62,7 @@ export function AdvancedMarket({
         initialLimit={limit}
         key={`${searchKey}:${services.length}`}
         onChange={(f, n) => {
-          setSearchParams(createListQuery(f, n, 1, { status: status || undefined }));
+          setSearchParams(createListQuery(f, n, 1));
         }}
       />
       <ErrorView error={error} />
@@ -79,8 +71,8 @@ export function AdvancedMarket({
       ) : (
         data && (
           <section className="panel">
-            {data.items.filter(c=>!status||c.status===status).length ? (
-              data.items.filter(c=>!status||c.status===status).map((c) => (
+            {data.items.length ? (
+              data.items.map((c) => (
                 <Link
                   className="order-row"
                   key={c.id}
