@@ -2388,3 +2388,29 @@ legend {
   border-color: var(--border);
   color: var(--text);
 }
+:root[data-theme="light"] .sidebar,
+:root[data-theme="light"] header,
+:root[data-theme="light"] .main,
+:root[data-theme="light"] .app,
+:root[data-theme="light"] .panel,
+:root[data-theme="light"] .notification-menu,
+:root[data-theme="light"] .chat-message,
+:root[data-theme="light"] .service-checkbox,
+:root[data-theme="light"] .plot-panel,
+:root[data-theme="light"] .auth-form-area,
+:root[data-theme="light"] .modal {
+  background: #fff;
+  color: #263c32;
+}
+:root[data-theme="light"] .sidebar,
+:root[data-theme="light"] header,
+:root[data-theme="light"] .panel,
+:root[data-theme="light"] .notification-menu,
+:root[data-theme="light"] .chat-sidebar,
+:root[data-theme="light"] .chat-heading,
+:root[data-theme="light"] .chat-compose,
+:root[data-theme="light"] .chat-messages,
+:root[data-theme="light"] .user,
+:root[data-theme="light"] .header-divider {
+  border-color: #e7ebe7;
+}

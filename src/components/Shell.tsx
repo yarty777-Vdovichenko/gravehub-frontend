@@ -44,6 +44,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
+    document.body.dataset.theme = theme;
+    document.body.style.background = theme === "dark" ? "#111713" : "#f7f8fa";
+    document.body.style.color = theme === "dark" ? "#dde7df" : "#263c32";
     localStorage.setItem("gravehub-theme", theme);
   }, [theme]);
   const hasCustomerRole = a.session?.user.roles.includes("customer") ?? false;
@@ -183,7 +186,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
               title={theme === "light" ? "Увімкнути темну тему" : "Увімкнути світлу тему"}
               aria-label={theme === "light" ? "Увімкнути темну тему" : "Увімкнути світлу тему"}
               aria-pressed={theme === "dark"}
-              onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}
+              onClick={() => {
+                const next = theme === "light" ? "dark" : "light";
+                document.documentElement.dataset.theme = next;
+                document.documentElement.style.colorScheme = next;
+                document.body.dataset.theme = next;
+                document.body.style.background = next === "dark" ? "#111713" : "#f7f8fa";
+                document.body.style.color = next === "dark" ? "#dde7df" : "#263c32";
+                localStorage.setItem("gravehub-theme", next);
+                setTheme(next);
+              }}
             >
               {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
             </button>

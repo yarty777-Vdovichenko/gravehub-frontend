@@ -11,6 +11,8 @@ const theme =
       ? "dark"
       : "light";
 document.documentElement.dataset.theme = theme;
+document.documentElement.style.colorScheme = theme;
+document.body.dataset.theme = theme;
 
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
