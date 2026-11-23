@@ -2,7 +2,8 @@ import {
 useEffect,
 useState
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type {
 Proposal
 } from "../api";
@@ -20,18 +21,38 @@ import { money } from './money';
 import { PageTitle } from './PageTitle';
 import { Pagination } from './Pagination';
 import { Spinner } from './Spinner';
+import { statuses } from './statuses';
 import { useApp } from './useApp';
 export function Proposals() {
   const a = useApp(),
+    nav = useNavigate(),
     [searchParams, setSearchParams] = useSearchParams(),
     requestedPage = Number(searchParams.get("page")),
     page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
+    status = searchParams.get("status") ?? "",
     [items, setItems] = useState<Proposal[]>([]),
     [total, setTotal] = useState(0),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [tick, setTick] = useState(0),
     [busy, setBusy] = useState(false);
+  const openChat = async (proposalId: string) => {
+    if (a.demo) {
+      a.notice("У демо-режимі чат недоступний");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data } = await api.post<{ id: string }>(
+        `/conversations/by-proposal/${encodeURIComponent(proposalId)}`,
+      );
+      nav(`/messages?conversation=${encodeURIComponent(data.id)}`);
+    } catch (e) {
+      a.notice(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   const setPage = (nextPage: number) => {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -40,17 +61,26 @@ export function Proposals() {
       return next;
     });
   };
+  const setStatus = (nextStatus: string) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextStatus) next.set("status", nextStatus);
+      else next.delete("status");
+      next.delete("page");
+      return next;
+    });
+  };
   useEffect(() => {
     let live=true;
     setLoading(true);
     setError("");
     if (a.demo) {
-      const ps = a.demoProposals;
+      const ps = a.demoProposals.filter((p) => !status || p.status === status);
       setItems(ps.slice((page - 1) * 10, page * 10));
       setTotal(ps.length);
       setLoading(false);
     } else
-      pageGet<Proposal>("/employee/proposals", page)
+      pageGet<Proposal>("/employee/proposals", page, status)
         .then((r) => {
           if(!live)return;
           setItems(r.items);
@@ -59,7 +89,7 @@ export function Proposals() {
         .catch((e) => {if(live)setError(errorText(e))})
         .finally(() => {if(live)setLoading(false)});
     return()=>{live=false};
-  }, [a.demo, page, tick, a.demoProposals]);
+  }, [a.demo, page, status, tick, a.demoProposals]);
   return (
     <>
       <PageTitle
@@ -67,6 +97,19 @@ export function Proposals() {
         subtitle="Стежте за відповідями замовників та керуйте своїми пропозиціями."
       />
       <section className="panel detail-panel">
+        <select
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+          }}
+        >
+          <option value="">Усі статуси</option>
+          {["pending", "accepted", "rejected"].map((s) => (
+            <option key={s} value={s}>
+              {statuses[s]}
+            </option>
+          ))}
+        </select>
         {loading ? (
           <Spinner />
         ) : error ? (
@@ -93,31 +136,45 @@ export function Proposals() {
               </div>
               <Badge status={p.status} />
               <p>{p.comment}</p>
-              <b>{money(p.price)}</b>
-              {p.status === "pending" && (
-                <button
-                  disabled={busy}
-                  className="button secondary"
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      if (a.demo)
-                        a.setDemoProposals((ps) =>
-                          ps.filter((x) => x.id !== p.id),
-                        );
-                      else await api.delete("/employee/proposals/" + p.id);
-                      setTick((t) => t + 1);
-                      a.notice("Пропозицію скасовано");
-                    } catch (e) {
-                      a.notice(errorText(e));
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Скасувати пропозицію
-                </button>
-              )}
+              <div className="proposal-footer">
+                <b className="proposal-price">{money(p.price)}</b>
+                <div className="proposal-actions">
+                  {p.status !== "rejected" && (
+                    <button
+                      disabled={busy}
+                      className="button secondary chat-button"
+                      onClick={() => void openChat(p.id)}
+                    >
+                      <MessageCircle size={16} />
+                      Написати замовнику
+                    </button>
+                  )}
+                  {p.status === "pending" && (
+                    <button
+                      disabled={busy}
+                      className="button secondary"
+                      onClick={async () => {
+                        setBusy(true);
+                        try {
+                          if (a.demo)
+                            a.setDemoProposals((ps) =>
+                              ps.filter((x) => x.id !== p.id),
+                            );
+                          else await api.delete("/employee/proposals/" + p.id);
+                          setTick((t) => t + 1);
+                          a.notice("Пропозицію скасовано");
+                        } catch (e) {
+                          a.notice(errorText(e));
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Скасувати пропозицію
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           ))
         ) : (
