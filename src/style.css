@@ -2385,6 +2385,85 @@ legend {
   background: #202923;
   border-right: 1px solid var(--border);
 }
+:root[data-theme="dark"] .hero {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .hero h2,
+:root[data-theme="dark"] .hero-copy > a {
+  color: var(--text-strong);
+}
+:root[data-theme="dark"] .hero p,
+:root[data-theme="dark"] .hero-tag {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .hero-art {
+  background: linear-gradient(120deg, transparent, #26352c);
+  opacity: 0.72;
+}
+:root[data-theme="dark"] .hero-art .sun {
+  background: #4b5a43;
+}
+:root[data-theme="dark"] .hero-art .hill-back {
+  background: #37483b;
+}
+:root[data-theme="dark"] .hero-art .hill {
+  background: #2d3d32;
+}
+:root[data-theme="dark"] .art-note {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-muted);
+  box-shadow: var(--shadow);
+}
+:root[data-theme="dark"] .stat,
+:root[data-theme="dark"] .order-row,
+:root[data-theme="dark"] .service-card,
+:root[data-theme="dark"] .secondary,
+:root[data-theme="dark"] .steps,
+:root[data-theme="dark"] .panel-foot {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+:root[data-theme="dark"] .stat {
+  box-shadow: var(--shadow);
+}
+:root[data-theme="dark"] .stat-icon,
+:root[data-theme="dark"] .tiny-icon,
+:root[data-theme="dark"] .step > span,
+:root[data-theme="dark"] .order-icon,
+:root[data-theme="dark"] .panel-title h2 span {
+  background: var(--surface-soft);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .order-row:hover {
+  background: var(--surface-soft);
+}
+:root[data-theme="dark"] .tabs,
+:root[data-theme="dark"] .order-row,
+:root[data-theme="dark"] .steps > a,
+:root[data-theme="dark"] .step:not(:nth-last-child(2)):after {
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .tabs button,
+:root[data-theme="dark"] .stat small,
+:root[data-theme="dark"] .stat > div,
+:root[data-theme="dark"] .order-info p,
+:root[data-theme="dark"] .order-bottom,
+:root[data-theme="dark"] .service-card p,
+:root[data-theme="dark"] .step p,
+:root[data-theme="dark"] .panel-foot {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .tabs button.active,
+:root[data-theme="dark"] .tabs .active:after,
+:root[data-theme="dark"] .steps > a,
+:root[data-theme="dark"] .panel-title > a,
+:root[data-theme="dark"] .section-heading > a {
+  color: var(--green);
+}
 :root[data-theme="dark"] .auth-story > p,
 :root[data-theme="dark"] .auth-eyebrow,
 :root[data-theme="dark"] .auth-bottom {
