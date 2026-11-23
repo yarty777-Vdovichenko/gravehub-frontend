@@ -1,9 +1,9 @@
 import { Bell, CheckCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { io } from "socket.io-client";
 import type { NotificationItem, Page } from "../api";
 import { api, errorText } from "../api";
+import { createChatSocket } from "../socket";
 import "../style.css";
 import { useApp } from "./useApp";
 
@@ -52,10 +52,7 @@ export function NotificationBell() {
 
     const token = app.session?.accessToken;
     if (!token || app.demo) return () => { active = false; };
-    const socket = io(import.meta.env.VITE_API_URL, {
-      auth: { token },
-      withCredentials: true,
-    });
+    const socket = createChatSocket(token);
     socket.on("notification:new", (notification: NotificationItem) => {
       setUnread((count) => count + (notification.readAt ? 0 : 1));
       setItems((current) =>

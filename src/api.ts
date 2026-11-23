@@ -178,6 +178,7 @@ const auth = axios.create({
 });
 let token: string | null = null;
 let remembered: Session | null = null;
+export const getAccessToken = () => token;
 const unavailableRoles=new Set<Mode>();
 export const canRequestRole=(role:Mode)=>!!remembered && !remembered.user.roles.includes(role) && (remembered.user.rolesComplete===true || unavailableRoles.has(role));
 export function rememberIdentity(name:string,email:string){if(remembered){remembered={...remembered,user:{...remembered.user,name,email}};applySession(remembered)}}

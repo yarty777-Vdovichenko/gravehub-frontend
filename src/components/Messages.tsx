@@ -1,9 +1,10 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { MessageCircle, Send } from "lucide-react";
-import { io, Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import { useSearchParams } from "react-router-dom";
 import type { ChatMessage, Conversation, Page } from "../api";
 import { api, errorText } from "../api";
+import { createChatSocket } from "../socket";
 import "../style.css";
 import { Empty } from "./Empty";
 import { ErrorBox } from "./ErrorBox";
@@ -89,15 +90,44 @@ export function Messages() {
     const token = app.session?.accessToken;
     if (!token || app.demo) return;
 
-    const socket = io(import.meta.env.VITE_API_URL, {
-      auth: { token },
-      withCredentials: true,
-    });
+    const socket = createChatSocket(token);
     socketRef.current = socket;
-    socket.on("connect", () => setConnected(true));
+    let firstConnect = true;
+    socket.on("connect", () => {
+      setConnected(true);
+      setError("");
+      if (firstConnect) {
+        firstConnect = false;
+        return;
+      }
+      // Events were missed while offline: resync the list and the open chat.
+      void loadConversations();
+      const openId = selectedRef.current;
+      if (!openId) return;
+      api
+        .get<{ items: ChatMessage[]; hasMore: boolean }>(
+          `/conversations/${encodeURIComponent(openId)}/messages`,
+          { params: { limit: 100 } },
+        )
+        .then(({ data }) => {
+          if (selectedRef.current !== openId) return;
+          setMessages((current) => {
+            const ids = new Set(current.map((message) => message.id));
+            const fresh = data.items
+              .slice()
+              .reverse()
+              .filter((message) => !ids.has(message.id));
+            return [...current, ...fresh].sort((x, y) =>
+              x.createdAt.localeCompare(y.createdAt),
+            );
+          });
+        })
+        .catch(() => {});
+    });
     socket.on("disconnect", () => setConnected(false));
-    socket.on("connect_error", () => {
+    socket.on("connect_error", (error) => {
       setConnected(false);
+      if (error.message === "unauthorized") return; // session is being refreshed
       setError("Не вдалося підключитися до чату. Перевірте доступність сервера.");
     });
     socket.on("message:new", (message: ChatMessage) => {
@@ -230,7 +260,7 @@ export function Messages() {
                 <span className="avatar">{selected.participant.name.slice(0, 1)}</span>
                 <div>
                   <b>{selected.participant.name}</b>
-                  <small>{connected ? "Чат активний" : "Підключення до чату…"}</small>
+                  <small>{connected ? "У мережі" : "Підключення до чату…"}</small>
                 </div>
               </div>
               <div className="chat-messages" aria-live="polite">
