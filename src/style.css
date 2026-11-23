@@ -2411,3 +2411,276 @@ legend {
     flex: 1 1 100%;
   }
 }
+
+/* --- dark theme: surfaces that have hard-coded light backgrounds --- */
+:root[data-theme="dark"] .hero {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .hero-tag,
+:root[data-theme="dark"] .hero-copy > a {
+  color: var(--green);
+}
+:root[data-theme="dark"] .hero-art {
+  opacity: 0.55;
+}
+:root[data-theme="dark"] .auth-story {
+  background: var(--surface-soft);
+}
+:root[data-theme="dark"] .auth-eyebrow {
+  color: var(--green-soft);
+}
+:root[data-theme="dark"] .auth-illustration {
+  opacity: 0.45;
+}
+:root[data-theme="dark"] .stat {
+  background: var(--surface);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .stat > div,
+:root[data-theme="dark"] .stat small {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .stat-icon {
+  background: var(--surface-soft);
+  color: var(--green);
+}
+.chat-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  background: var(--surface-selected);
+  color: var(--text-strong);
+  border-color: var(--input-border);
+}
+.chat-button:hover:not(:disabled) {
+  background: var(--surface-soft);
+}
+.chat-button svg {
+  flex-shrink: 0;
+}
+.form-actions .chat-button {
+  margin: 0 auto 0 0;
+}
+.chat-button-block {
+  margin: 0 0 8px;
+}
+.chat-hint {
+  display: block;
+  margin-bottom: 20px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.proposal-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+.proposal-price {
+  font-size: 16px;
+  color: var(--text-strong);
+}
+.proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+}
+.proposal-actions .chat-button {
+  margin: 0;
+}
+@media (max-width: 560px) {
+  .proposal-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+  .proposal-actions .button {
+    flex: 1 1 100%;
+  }
+}
+
+/* --- dark theme: surfaces that have hard-coded light backgrounds --- */
+:root[data-theme="dark"] .hero {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .hero-tag,
+:root[data-theme="dark"] .hero-copy > a {
+  color: var(--green);
+}
+:root[data-theme="dark"] .hero-art {
+  opacity: 0.55;
+}
+:root[data-theme="dark"] .auth-story {
+  background: var(--surface-soft);
+}
+:root[data-theme="dark"] .auth-eyebrow {
+  color: var(--green-soft);
+}
+:root[data-theme="dark"] .auth-illustration {
+  opacity: 0.45;
+}
+:root[data-theme="dark"] .stat {
+  background: var(--surface);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .stat > div,
+:root[data-theme="dark"] .stat small {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .stat-icon {
+  background: var(--surface-soft);
+  color: var(--green);
+}
+
+:root[data-theme="dark"] .panel-foot,
+:root[data-theme="dark"] .steps {
+  background: var(--surface);
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .service-card,
+:root[data-theme="dark"] .service-0,
+:root[data-theme="dark"] .service-1,
+:root[data-theme="dark"] .service-2,
+:root[data-theme="dark"] .service-3 {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .service-card > div,
+:root[data-theme="dark"] .service-card > div > svg:last-child {
+  color: var(--green);
+}
+:root[data-theme="dark"] .service-card p,
+:root[data-theme="dark"] .service-card small {
+  color: var(--text-muted);
+}
+.chat-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  background: var(--surface-selected);
+  color: var(--text-strong);
+  border-color: var(--input-border);
+}
+.chat-button:hover:not(:disabled) {
+  background: var(--surface-soft);
+}
+.chat-button svg {
+  flex-shrink: 0;
+}
+.form-actions .chat-button {
+  margin: 0 auto 0 0;
+}
+.chat-button-block {
+  margin: 0 0 8px;
+}
+.chat-hint {
+  display: block;
+  margin-bottom: 20px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.proposal-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+.proposal-price {
+  font-size: 16px;
+  color: var(--text-strong);
+}
+.proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+}
+.proposal-actions .chat-button {
+  margin: 0;
+}
+@media (max-width: 560px) {
+  .proposal-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+  .proposal-actions .button {
+    flex: 1 1 100%;
+  }
+}
+
+/* --- dark theme: surfaces that have hard-coded light backgrounds --- */
+:root[data-theme="dark"] .hero {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .hero-tag,
+:root[data-theme="dark"] .hero-copy > a {
+  color: var(--green);
+}
+:root[data-theme="dark"] .hero-art {
+  opacity: 0.55;
+}
+:root[data-theme="dark"] .auth-story {
+  background: var(--surface-soft);
+}
+:root[data-theme="dark"] .auth-eyebrow {
+  color: var(--green-soft);
+}
+:root[data-theme="dark"] .auth-illustration {
+  opacity: 0.45;
+}
+:root[data-theme="dark"] .stat {
+  background: var(--surface);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .stat > div,
+:root[data-theme="dark"] .stat small {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .stat-icon {
+  background: var(--surface-soft);
+  color: var(--green);
+}
+
+:root[data-theme="dark"] .panel-foot,
+:root[data-theme="dark"] .steps {
+  background: var(--surface);
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .service-card,
+:root[data-theme="dark"] .service-0,
+:root[data-theme="dark"] .service-1,
+:root[data-theme="dark"] .service-2,
+:root[data-theme="dark"] .service-3 {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .service-card > div,
+:root[data-theme="dark"] .service-card > div > svg:last-child {
+  color: var(--green);
+}
+:root[data-theme="dark"] .service-card p,
+:root[data-theme="dark"] .service-card small {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .secondary {
+  background: var(--surface-soft);
+  color: var(--text-strong);
+  border-color: var(--input-border);
+}
+:root[data-theme="dark"] .secondary.chat-button {
+  background: var(--surface-selected);
+}
