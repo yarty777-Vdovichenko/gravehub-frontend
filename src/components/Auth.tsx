@@ -32,6 +32,7 @@ import { employeeInput } from './employeeInput';
 import { ErrorBox } from './ErrorBox';
 import { Field } from './Field';
 import { useApp } from './useApp';
+import { ThemeToggle } from "./ThemeToggle";
 export function Auth({ register = false }: { register?: boolean }) {
   const a = useApp(),
     nav = useNavigate(),
@@ -89,7 +90,7 @@ export function Auth({ register = false }: { register?: boolean }) {
       setBusy(false);
     }
   }
-  if(register && registeredEmail) return <div className="auth-page"><section className="auth-form-area"><div className="auth-form"><h1>Підтвердіть пошту</h1><p>Ми надіслали лист на <b>{registeredEmail}</b>. Перейдіть за посиланням у листі, щоб активувати акаунт.</p><button className="button primary" onClick={async()=>{try{await api.post("/auth/resend-verification",{email:registeredEmail});setError("Лист повторно надіслано (якщо акаунт існує і пошта не підтверджена).") }catch(e){setError(errorText(e))}}}>Надіслати лист повторно</button>{error&&<ErrorBox text={error}/>}<p><Link to="/login">Повернутися до входу</Link></p></div></section></div>;
+  if(register && registeredEmail) return <div className="auth-page"><section className="auth-form-area"><div className="auth-theme-toggle"><ThemeToggle /></div><div className="auth-form"><h1>Підтвердіть пошту</h1><p>Ми надіслали лист на <b>{registeredEmail}</b>. Перейдіть за посиланням у листі, щоб активувати акаунт.</p><button className="button primary" onClick={async()=>{try{await api.post("/auth/resend-verification",{email:registeredEmail});setError("Лист повторно надіслано (якщо акаунт існує і пошта не підтверджена).") }catch(e){setError(errorText(e))}}}>Надіслати лист повторно</button>{error&&<ErrorBox text={error}/>}<p><Link to="/login">Повернутися до входу</Link></p></div></section></div>;
   return (
     <div className="auth-page">
       <section className="auth-story">
@@ -120,6 +121,9 @@ export function Auth({ register = false }: { register?: boolean }) {
         </span>
       </section>
       <section className="auth-form-area">
+        <div className="auth-theme-toggle">
+          <ThemeToggle />
+        </div>
         <div className="auth-form">
           <span className="eyebrow">ВАШ ПРОСТІР ТУРБОТИ</span>
           <h1>{register ? "Створити обліковий запис" : "Раді бачити вас"}</h1>
@@ -246,5 +250,5 @@ export function AuthFlow({kind}:{kind:"verify"|"reset"|"forgot"}) {
  const location=useLocation(), [busy,setBusy]=useState(false),[message,setMessage]=useState(""),[error,setError]=useState(""),[email,setEmail]=useState(""),[password,setPassword]=useState("");
  const token=new URLSearchParams(location.search).get("token")||"";
  async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");setMessage("");try{if(kind==="forgot"){await api.post("/auth/forgot-password",{email});setMessage("Якщо акаунт існує, лист для відновлення буде надіслано.");}else if(kind==="verify"){if(!token)throw new Error("У посиланні відсутній token.");await api.post("/auth/verify-email",{token});setMessage("Пошту підтверджено. Тепер можете увійти.");}else{if(!token)throw new Error("У посиланні відсутній token.");await api.post("/auth/reset-password",{token,newPassword:password});setMessage("Пароль змінено. Увійдіть із новим паролем.");}}catch(e){setError(errorText(e))}finally{setBusy(false)}}
- return <div className="auth-page"><section className="auth-form-area"><div className="auth-form"><h1>{kind==="verify"?"Підтвердження пошти":kind==="forgot"?"Забули пароль?":"Відновлення пароля"}</h1>{kind==="forgot"?<form onSubmit={submit}><Field label="Електронна пошта"><input type="email" required value={email} onChange={e=>setEmail(e.target.value)}/></Field><button className="button primary" disabled={busy}>{busy?"Надсилання…":"Надіслати лист"}</button></form>:kind==="verify"?<form onSubmit={submit}><p>Підтвердіть адресу електронної пошти за посиланням із листа.</p><button className="button primary" disabled={busy}>{busy?"Перевіряємо…":"Підтвердити пошту"}</button></form>:<form onSubmit={submit}><Field label="Новий пароль"><input type="password" minLength={8} maxLength={72} required value={password} onChange={e=>setPassword(e.target.value)} autoComplete="new-password"/></Field><button className="button primary" disabled={busy}>{busy?"Збереження…":"Змінити пароль"}</button></form>}{message&&<p>{message}</p>}{error&&<ErrorBox text={error}/>}<p><Link to="/login">До входу</Link></p></div></section></div>;
+ return <div className="auth-page auth-page-single"><section className="auth-form-area"><div className="auth-theme-toggle"><ThemeToggle /></div><div className="auth-form"><h1>{kind==="verify"?"Підтвердження пошти":kind==="forgot"?"Забули пароль?":"Відновлення пароля"}</h1>{kind==="forgot"?<form onSubmit={submit}><Field label="Електронна пошта"><input type="email" required value={email} onChange={e=>setEmail(e.target.value)}/></Field><button className="button primary" disabled={busy}>{busy?"Надсилання…":"Надіслати лист"}</button></form>:kind==="verify"?<form onSubmit={submit}><p>Підтвердіть адресу електронної пошти за посиланням із листа.</p><button className="button primary" disabled={busy}>{busy?"Перевіряємо…":"Підтвердити пошту"}</button></form>:<form onSubmit={submit}><Field label="Новий пароль"><input type="password" minLength={8} maxLength={72} required value={password} onChange={e=>setPassword(e.target.value)} autoComplete="new-password"/></Field><button className="button primary" disabled={busy}>{busy?"Збереження…":"Змінити пароль"}</button></form>}{message&&<p>{message}</p>}{error&&<ErrorBox text={error}/>}<p><Link to="/login">До входу</Link></p></div></section></div>;
 }

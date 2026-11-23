@@ -1791,6 +1791,13 @@ legend {
   justify-content: center;
   padding: 60px 35px;
   background: #fff;
+  position: relative;
+}
+.auth-theme-toggle {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 2;
 }
 .auth-form {
   width: 100%;
@@ -2373,6 +2380,15 @@ legend {
 }
 :root[data-theme="dark"] .modal-backdrop {
   background: rgba(5, 10, 7, 0.82);
+}
+:root[data-theme="dark"] .auth-story {
+  background: #202923;
+  border-right: 1px solid var(--border);
+}
+:root[data-theme="dark"] .auth-story > p,
+:root[data-theme="dark"] .auth-eyebrow,
+:root[data-theme="dark"] .auth-bottom {
+  color: var(--text-muted);
 }
 :root[data-theme="dark"] .modal,
 :root[data-theme="dark"] .proposal,
