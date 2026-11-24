@@ -84,7 +84,13 @@
 .cemetery-pin.selected .cemetery-pin-dot {
   fill: #bd7543;
 }
+.cemetery-pin-leader {
+  stroke: #47744b;
+  stroke-width: 1;
+  stroke-dasharray: 2 1.5;
+}
 .cemetery-pin-label {
+  pointer-events: none;
   fill: #263c32;
   font: 600 10px Manrope, Arial, sans-serif;
   paint-order: stroke;

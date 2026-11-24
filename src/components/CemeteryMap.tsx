@@ -1,14 +1,7 @@
+import { useMemo } from "react";
 import type { Cemetery } from "../new-api";
 import "../new-pages.css";
-
-const BOUNDS = { west: 22.1, east: 40.2, south: 44.2, north: 52.4 };
-
-function mapPoint(longitude: number, latitude: number) {
-  return {
-    x: 160 + ((longitude - BOUNDS.west) / (BOUNDS.east - BOUNDS.west)) * 400,
-    y: 10 + ((BOUNDS.north - latitude) / (BOUNDS.north - BOUNDS.south)) * 280,
-  };
-}
+import { MAP_VIEW, layoutCemeteryMap } from "./cemeteryMapLayout";
 
 export function CemeteryMap({
   cemeteries,
@@ -19,10 +12,20 @@ export function CemeteryMap({
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
+  const { pins, labels } = useMemo(
+    () => layoutCemeteryMap(cemeteries, selectedId),
+    [cemeteries, selectedId],
+  );
+  // Вибраний маркер малюємо останнім, щоб він був поверх інших.
+  const ordered = [...pins].sort(
+    (a, b) =>
+      Number(a.cemetery.id === selectedId) - Number(b.cemetery.id === selectedId),
+  );
+
   return (
     <div className="cemetery-overview">
       <svg
-        viewBox="0 0 720 320"
+        viewBox={`0 0 ${MAP_VIEW.width} ${MAP_VIEW.height}`}
         role="group"
         aria-label="Карта України з розташуванням кладовищ"
       >
@@ -31,17 +34,38 @@ export function CemeteryMap({
           href="/ukraine-map.svg"
           x="0"
           y="0"
-          width="720"
-          height="320"
+          width={MAP_VIEW.width}
+          height={MAP_VIEW.height}
           aria-hidden="true"
         />
-        {cemeteries.map((cemetery, index) => {
-          const { x, y } = mapPoint(cemetery.longitude, cemetery.latitude);
+        {labels.map(
+          (label) =>
+            label.leader && (
+              <line
+                key={`${label.key}-leader`}
+                className="cemetery-pin-leader"
+                {...label.leader}
+              />
+            ),
+        )}
+        {labels.map((label) => (
+          <text
+            key={label.key}
+            className="cemetery-pin-label"
+            x={label.x}
+            y={label.y}
+            textAnchor={label.anchor}
+            aria-hidden="true"
+          >
+            {label.text}
+          </text>
+        ))}
+        {ordered.map(({ cemetery, x, y, px, py, moved }) => {
           const selected = cemetery.id === selectedId;
           return (
             <g
               key={cemetery.id}
-              className="cemetery-pin"
+              className={selected ? "cemetery-pin selected" : "cemetery-pin"}
               role="button"
               tabIndex={0}
               aria-pressed={selected}
@@ -54,25 +78,28 @@ export function CemeteryMap({
                 }
               }}
             >
+              <title>{`${cemetery.name}, ${cemetery.city}`}</title>
+              {moved && (
+                <line
+                  className="cemetery-pin-leader"
+                  x1={x}
+                  y1={y}
+                  x2={px}
+                  y2={py}
+                />
+              )}
               <circle
                 className="cemetery-pin-halo"
-                cx={x}
-                cy={y}
-                r={selected ? 12 : 9}
+                cx={px}
+                cy={py}
+                r={selected ? 10 : 7.5}
               />
               <circle
                 className="cemetery-pin-dot"
-                cx={x}
-                cy={y}
-                r={selected ? 6 : 4.5}
+                cx={px}
+                cy={py}
+                r={selected ? 5.5 : 4}
               />
-              <text
-                className="cemetery-pin-label"
-                x={x + 10}
-                y={y + (index % 2 ? 14 : -8)}
-              >
-                {cemetery.name}
-              </text>
             </g>
           );
         })}
